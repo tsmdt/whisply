@@ -1,6 +1,14 @@
 # whisply
 Transcribe, annotate, subtitle audio and video with Whisper ... Fast!
 
+## Requirements
+- ffmpeg
+- python3.11
+
+For GPU acceleration:
+- CUDA
+
+
 ## Installation
 **1. Install `ffmpeg`**
 ```
