@@ -1,0 +1,7 @@
+/dev
+/downloads
+/transcriptions
+/venv*
+.vscode
+.DS_Store
+*.log

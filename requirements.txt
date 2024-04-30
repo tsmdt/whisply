@@ -1,0 +1,11 @@
+click
+ffmpeg-python
+torch
+faster-whisper
+pyannote.audio
+transformers 
+optimum 
+accelerate
+rich
+validators
+yt-dlp
