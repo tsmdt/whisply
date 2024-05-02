@@ -43,7 +43,7 @@ Options:
   --device [cpu|gpu|mps]  Select the computation device: CPU, GPU (nvidia
                           CUDA), or MPS (Metal Performance Shaders).
   --lang [en|fr|de]       Specify the language of the audio for transcription.
-                          Leave empty for auto-detection.
+                          Default: auto-detection.
   --detect_speakers       Enable speaker diarization to identify and separate
                           different speakers.
   --hf_token TEXT         HuggingFace Access token required for speaker
