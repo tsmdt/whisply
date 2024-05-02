@@ -52,3 +52,28 @@ Options:
   --parallel              Transcribe files in parallel.
   --help                  Show this message and exit.
 ```
+**Speaker Detection / Diarization**<br>
+To use `--detect_speakers` you need to provide a valid [HuggingFace](https://huggingface.co) access token by using the `--hf_token` flag. In addition to this you have to accept *both* `pyannote` user conditions for version 3.0 and 3.1 of the segmentation model. Follow the instructions in the section *Requirements* of the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
+
+**Using config files**<br>
+You can provide a .json config file by using the `--config` which makes processing more user-friendly. An example config looks like this:
+```
+{
+    "files": "path/to/files",
+    "device": "cpu",
+    "lang": null,
+    "detect_speakers": true,
+    "hf_token": "Hugging Face Access Token",
+    "srt": true,
+    "parallel": false
+}
+```
+**Using .list files for batch processing**<br>
+Instead of providing a file, folder or URL by using the `--files` option, you can pass a `.list` with a mix of files, folders and URLs for processing. Example:
+```
+cat my_files.list
+video_01.mp4
+video_02.mp4
+./my_files/
+https://youtu.be/KtOayYXEsN4?si=-0MS6KXbEWXA7dqo
+```
