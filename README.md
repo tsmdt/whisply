@@ -11,6 +11,9 @@ For GPU acceleration:
 - nvidia GPU (CUDA)
 - Metal Performance Shaders (MPS) Mac M1-M3
 
+For speaker detection / diarization:
+- HuggingFace access token
+
 ## Installation
 **1. Install `ffmpeg`**
 ```
