@@ -385,7 +385,7 @@ class TranscriptionHandler:
         Returns:
         None
         """
-        logging.debug(f"Parameters for processing {print(self.metadata)}")
+        logging.debug(f"Parameters for processing {self.metadata}")
 
         # Get filepaths
         self.get_filepaths(files)
