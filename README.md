@@ -1,5 +1,5 @@
 # whisply
-Transcribe, annotate, subtitle audio and video with Whisper ... Fast!
+Transcribe, annotate, subtitle audio and video with Whisper ... fast!
 
 ## Requirements
 - ffmpeg
