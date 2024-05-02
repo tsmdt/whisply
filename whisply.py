@@ -96,7 +96,7 @@ class TranscriptionHandler:
         logging.info("🗣️ Speaker detection (diarization) started ...")
         is_video = Path(filepath).suffix in ['.mkv', '.mp4', '.mov']
         
-        # Convert video to wav if neccessary
+        # Convert video to wav if necessary
         if is_video:
             audio_path = Path(filepath).with_suffix('.wav')
             self.convert_video_to_wav(videofile_path=Path(filepath), output_audio_path=audio_path.as_posix())
