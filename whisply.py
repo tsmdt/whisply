@@ -418,7 +418,7 @@ def load_config(config: json) -> dict:
         return json.load(file)
 
 @click.command()
-@click.option('--files', type=click.Path(), help='Path to file, folder, URL or .list to process.')
+@click.option('--files', type=click.Path(), required=True, help='Path to file, folder, URL or .list to process.')
 @click.option('--device', default='cpu', type=click.Choice(['cpu', 'gpu', 'mps'], case_sensitive=False), 
               help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Metal Performance Shaders).')
 @click.option('--lang', default=None, type=click.Choice(['en', 'fr', 'de'], case_sensitive=False), 
