@@ -4,7 +4,7 @@ Transcribe, diarize, annotate and subtitle audio and video files with [Whisper](
 Whisply combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/chenxwh/insanely-fast-whisper) and batch processing of files. It also enables speaker detection and annotation via [pyannote](https://github.com/pyannote/pyannote-audio).
 
 ## Requirements
-- ffmpeg
+- [FFmpeg](https://ffmpeg.org/)
 - python3.11
 
 For GPU acceleration:
