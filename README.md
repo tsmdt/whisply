@@ -76,6 +76,7 @@ You can provide a .json config file by using the `--config` which makes processi
 Instead of providing a file, folder or URL by using the `--files` option, you can pass a `.list` with a mix of files, folders and URLs for processing. Example:
 ```
 cat my_files.list
+
 video_01.mp4
 video_02.mp4
 ./my_files/
