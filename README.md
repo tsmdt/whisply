@@ -41,6 +41,7 @@ pip install -r requirement.txt
 
 ## Usage
 ```
+python whisply_cli.py
 Options:
   --files PATH            Path to file, folder, URL or .list to process.
   --device [cpu|gpu|mps]  Select the computation device: CPU, GPU (nvidia
@@ -53,7 +54,6 @@ Options:
                           diarization.
   --srt                   Generate SRT subtitles from the transcription.
   --config FILE           Path to configuration file.
-  --parallel              Transcribe files in parallel.
   --help                  Show this message and exit.
 ```
 **Speaker Detection / Diarization**<br>
@@ -69,7 +69,6 @@ You can provide a .json config file by using the `--config` which makes processi
     "detect_speakers": true,
     "hf_token": "Hugging Face Access Token",
     "srt": true,
-    "parallel": false
 }
 ```
 **Using .list files for batch processing**<br>
