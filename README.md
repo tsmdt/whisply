@@ -42,6 +42,7 @@ pip install -r requirement.txt
 ## Usage
 ```
 python whisply_cli.py
+
 Options:
   --files PATH            Path to file, folder, URL or .list to process.
   --device [cpu|gpu|mps]  Select the computation device: CPU, GPU (nvidia
