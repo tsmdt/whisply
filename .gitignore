@@ -1,6 +1,8 @@
 /dev
-/downloads
+/downloads*
 /transcriptions
+/files*
+/legacy
 /venv*
 .vscode
 .DS_Store
