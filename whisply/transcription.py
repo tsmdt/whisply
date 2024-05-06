@@ -13,7 +13,7 @@ from whisply import little_helper, download_utils, speaker_detection
 
 
 # Set logging configuration
-logging.basicConfig(filename=f"whisply_{datetime.now().strftime('%Y%m%d')}.log", 
+logging.basicConfig(filename=f"whisply_{datetime.now().strftime('%d%m%Y')}.log", 
                     level=logging.DEBUG, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
 
 
@@ -51,7 +51,7 @@ class TranscriptionHandler:
     - None
     """
     def __init__(self, base_dir='./transcriptions', model='large-v3', device='cpu', 
-                 language=None, detect_speakers=False, hf_token=None, srt=False):
+                 language=None, detect_speakers=False, hf_token=None, txt=False, srt=False):
         self.base_dir = Path(base_dir)
         little_helper.ensure_dir(self.base_dir)
         self.device = device
@@ -59,6 +59,7 @@ class TranscriptionHandler:
         self.model = model
         self.detect_speakers = detect_speakers
         self.hf_token = hf_token
+        self.txt = txt
         self.srt = srt
         self.metadata = self._collect_metadata()
         self.filepaths = []
@@ -67,11 +68,12 @@ class TranscriptionHandler:
 
 
     def _collect_metadata(self):
-        metadata = {'base_dir': self.base_dir,
+        metadata = {'output_dir': self.base_dir,
                     'language': self.language,
                     'model': self.model,
                     'detect_speakers': self.detect_speakers,
-                    'srt': self.srt}
+                    'srt': self.srt,
+                    'txt': self.txt}
         return metadata
 
 
@@ -282,5 +284,6 @@ class TranscriptionHandler:
 
             little_helper.save_results(result=result, 
                                        srt=self.srt, 
+                                       txt=self.txt,
                                        detect_speakers=self.detect_speakers)
             self.processed_files.append(result)

@@ -82,6 +82,12 @@ def save_transcription(result: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as fout:
         json.dump(result, fout, indent=4)
     print(f'Saved .json transcription → {filepath}.')
+    
+
+def save_txt_transcript(result: dict, filepath: Path) -> None:
+    with open(filepath, 'w', encoding='utf-8') as txt_file:
+        txt_file.write(result['text'])
+    print(f'Saved .txt transcript → {filepath}.')
 
 
 def save_srt_subtitles(srt_text: str, filepath: Path) -> None:
@@ -96,13 +102,16 @@ def save_rttm_annotations(diarization, filepath: Path) -> None:
     print(f'Saved .rttm annotations → {filepath}.')
     
     
-def save_results(result: dict, srt: bool = False, detect_speakers: bool = False) -> None:
+def save_results(result: dict, srt: bool = False, txt: bool = False, detect_speakers: bool = False) -> None:
     logger.info(f"""Saved .json transcription to {Path(f"{result['output_filepath']}.json")}""")
     save_transcription(result['transcription'], filepath=Path(f"{result['output_filepath']}.json"))
     if srt:
         logger.info(f"""Saved .srt subtitles to {Path(f"{result['output_filepath']}.srt")}""")
         srt_text = create_srt_subtitles(result['transcription'])
         save_srt_subtitles(srt_text, filepath=Path(f"{result['output_filepath']}.srt"))
+    if txt:
+        logger.info(f"""Saved .txt transcript to {Path(f"{result['output_filepath']}.txt")}""")
+        save_txt_transcript(result['transcription'], filepath=Path(f"{result['output_filepath']}.txt"))
     if detect_speakers:
         logger.info(f"""Saved .rttm to {Path(f"{result['output_filepath']}.rttm")}""")
         save_rttm_annotations(result['diarization'], filepath=Path(f"{result['output_filepath']}.rttm"))

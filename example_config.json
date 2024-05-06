@@ -1,9 +1,10 @@
 {
     "files": "path/to/files",
+    "output_dir": "./transcriptions",
     "device": "cpu",
     "lang": null, 
-    "detect_speakers": true,
+    "detect_speakers": false,
     "hf_token": "Hugging Face Access Token",
-    "srt": true,
-    "parallel": false
+    "txt": true,
+    "srt": false
 }
