@@ -75,11 +75,13 @@ You can provide a .json config file by using the `--config` which makes processi
 ```
 {
     "files": "path/to/files",
+    "output_dir": "./transcriptions",
     "device": "cpu",
-    "lang": null,
-    "detect_speakers": true,
+    "lang": null, 
+    "detect_speakers": false,
     "hf_token": "Hugging Face Access Token",
-    "srt": true,
+    "txt": true,
+    "srt": false
 }
 ```
 **Using .list files for batch processing**<br>
