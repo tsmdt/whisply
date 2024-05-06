@@ -44,8 +44,16 @@ pip install -r requirement.txt
 python whisply_cli.py
 
 Usage: whisply_cli.py [OPTIONS]
+
+  WHISPLY processes audio files for transcription, optionally enabling speaker
+  diarization and generating SRT subtitles or saving transcriptions in .txt
+  format. Default output is a .json file for each input file that saves
+  timestamps and transcripts.
+
 Options:
   --files PATH            Path to file, folder, URL or .list to process.
+  --output_dir DIRECTORY  Folder where transcripts should be saved. DEFAULT:
+                          "./transcriptions"
   --device [cpu|gpu|mps]  Select the computation device: CPU, GPU (nvidia
                           CUDA), or MPS (Metal Performance Shaders).
   --lang TEXT             Specify the language of the audio for transcription
@@ -55,6 +63,7 @@ Options:
   --hf_token TEXT         HuggingFace Access token required for speaker
                           diarization.
   --srt                   Generate SRT subtitles from the transcription.
+  --txt                   Save a .txt with the transcription.
   --config FILE           Path to configuration file.
   --help                  Show this message and exit.
 ```
