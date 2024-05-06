@@ -60,13 +60,13 @@ class TranscriptionHandler:
         self.detect_speakers = detect_speakers
         self.hf_token = hf_token
         self.srt = srt
-        self.metadata = self.collect_metadata()
+        self.metadata = self._collect_metadata()
         self.filepaths = []
         self.output_dir = None
         self.processed_files = []
 
 
-    def collect_metadata(self):
+    def _collect_metadata(self):
         metadata = {'base_dir': self.base_dir,
                     'language': self.language,
                     'model': self.model,
@@ -110,7 +110,7 @@ class TranscriptionHandler:
             progress.add_task(f"[cyan]Transcribing ({self.device.upper()}) → {filepath.name[:20]}..{filepath.suffix}", 
                               total = None)
             result = pipe(
-                filepath.as_posix(),
+                str(filepath),
                 chunk_length_s = 30,
                 batch_size = 8 if self.device in ['cpu', 'mps'] else 24,
                 return_timestamps = True,
@@ -156,7 +156,7 @@ class TranscriptionHandler:
         
         # Load model and set parameters
         model = WhisperModel(self.model, device='cpu', num_workers=num_workers, compute_type='int8')
-        segments, _ = model.transcribe(filepath.as_posix(), beam_size=5, language=self.language)
+        segments, _ = model.transcribe(str(filepath), beam_size=5, language=self.language)
         
         result = {}
         with Progress(

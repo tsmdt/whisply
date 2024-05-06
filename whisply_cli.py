@@ -37,7 +37,6 @@ def main(files, device, lang, detect_speakers, hf_token, srt, config):
                                                  detect_speakers=detect_speakers, 
                                                  hf_token=hf_token, 
                                                  srt=srt)
-    
     # Process files
     service.process_files(files)
 
