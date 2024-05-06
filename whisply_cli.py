@@ -12,12 +12,12 @@ from whisply import little_helper, transcription
 @click.option('--detect_speakers', default=False, is_flag=True, 
               help='Enable speaker diarization to identify and separate different speakers.')
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker diarization.')
-@click.option('--srt', default=False, is_flag=True, help='Generate SRT subtitles from the transcription.')
-@click.option('--txt', default=False, is_flag=True, help='Save a .txt with the transcription.')
+@click.option('--srt', default=False, is_flag=True, help='Create .srt subtitles from the transcription.')
+@click.option('--txt', default=False, is_flag=True, help='Create .txt with the transcription.')
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 def main(files, output_dir, device, lang, detect_speakers, hf_token, srt, txt, config):
     """
-    WHISPLY processes audio files for transcription, optionally enabling speaker diarization and generating SRT subtitles or saving transcriptions in .txt format.
+    WHISPLY processes audio files for transcription, optionally enabling speaker diarization and generating .srt subtitles or saving transcriptions in .txt format.
     Default output is a .json file for each input file that saves timestamps and transcripts.
     """
     # Load configuration from config.json if provided
