@@ -43,12 +43,13 @@ pip install -r requirement.txt
 ```
 python whisply_cli.py
 
+Usage: whisply_cli.py [OPTIONS]
 Options:
   --files PATH            Path to file, folder, URL or .list to process.
   --device [cpu|gpu|mps]  Select the computation device: CPU, GPU (nvidia
                           CUDA), or MPS (Metal Performance Shaders).
-  --lang [en|fr|de]       Specify the language of the audio for transcription.
-                          Default: auto-detection.
+  --lang TEXT             Specify the language of the audio for transcription
+                          (en, de, fr ...).
   --detect_speakers       Enable speaker diarization to identify and separate
                           different speakers.
   --hf_token TEXT         HuggingFace Access token required for speaker
