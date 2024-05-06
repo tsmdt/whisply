@@ -1,5 +1,4 @@
 import click
-
 from pathlib import Path
 from whisply import little_helper, transcription
 
@@ -8,8 +7,7 @@ from whisply import little_helper, transcription
 @click.option('--files', type=click.Path(), help='Path to file, folder, URL or .list to process.')
 @click.option('--device', default='cpu', type=click.Choice(['cpu', 'gpu', 'mps'], case_sensitive=False), 
               help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Metal Performance Shaders).')
-@click.option('--lang', default=None, type=click.Choice(['en', 'fr', 'de'], case_sensitive=False), 
-              help='Specify the language of the audio for transcription.')
+@click.option('--lang', type=str, default=None, help='Specify the language of the audio for transcription (en, de, fr ...).')
 @click.option('--detect_speakers', default=False, is_flag=True, 
               help='Enable speaker diarization to identify and separate different speakers.')
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker diarization.')
