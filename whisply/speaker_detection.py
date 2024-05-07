@@ -34,7 +34,7 @@ def annotate_speakers(filepath: Path, result: dict, device: str, hf_token: str) 
     """
     logger.info("🗣️ Speaker detection (diarization) started ...")
     
-    # Convert video to wav if neccessary
+    # Convert video to wav if necessary
     is_video = Path(filepath).suffix in ['.mkv', '.mp4', '.mov']
     if is_video:
         audio_path = Path(filepath).with_suffix('.wav')
