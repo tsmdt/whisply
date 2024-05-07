@@ -4,11 +4,14 @@ from whisply import little_helper, transcription
 
 
 @click.command(no_args_is_help=True)
-@click.option('--files', type=click.Path(file_okay=True, dir_okay=True, exists=True), help='Path to file, folder, URL or .list to process.')
-@click.option('--output_dir', default='./transcriptions', type=click.Path(file_okay=False, dir_okay=True), help='Folder where transcripts should be saved. DEFAULT: "./transcriptions"')
+@click.option('--files', required=True, type=click.Path(file_okay=True, dir_okay=True), 
+              help='Path to file, folder, URL or .list to process.')
+@click.option('--output_dir', default='./transcriptions', type=click.Path(file_okay=False, dir_okay=True), 
+              help='Folder where transcripts should be saved. DEFAULT: "./transcriptions"')
 @click.option('--device', default='cpu', type=click.Choice(['cpu', 'gpu', 'mps'], case_sensitive=False), 
               help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Metal Performance Shaders).')
-@click.option('--lang', type=str, default=None, help='Specify the language of the audio for transcription (en, de, fr ...).')
+@click.option('--lang', type=str, default=None, 
+              help='Specify the language of the audio for transcription (en, de, fr ...). DEFAULT: None (= auto-detection)')
 @click.option('--detect_speakers', default=False, is_flag=True, 
               help='Enable speaker diarization to identify and separate different speakers.')
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker diarization.')
@@ -17,8 +20,9 @@ from whisply import little_helper, transcription
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 def main(files, output_dir, device, lang, detect_speakers, hf_token, srt, txt, config):
     """
-    WHISPLY processes audio files for transcription, optionally enabling speaker diarization and generating .srt subtitles or saving transcriptions in .txt format.
-    Default output is a .json file for each input file that saves timestamps and transcripts.
+    WHISPLY processes audio and video files for transcription, optionally enabling speaker diarization and generating
+    .srt subtitles or saving transcriptions in .txt format. Default output is a .json file for each input file that 
+    saves timestamps and transcripts.
     """
     # Load configuration from config.json if provided
     if config:
@@ -34,7 +38,7 @@ def main(files, output_dir, device, lang, detect_speakers, hf_token, srt, txt, c
 
     # Check if speaker detection is enabled but no HuggingFace token is provided
     if detect_speakers and not hf_token:
-        click.echo('Error: Speaker diarization is enabled but no HuggingFace access token is provided.')
+        click.echo('---> Speaker diarization is enabled but no HuggingFace access token is provided.')
         return 
 
     # Instantiate TranscriptionHandler
