@@ -79,7 +79,7 @@ class TranscriptionHandler:
         """
         Transcribes an audio file using the 'insanely-fast-whisper' implementation: https://github.com/chenxwh/insanely-fast-whisper
 
-        This method utilizes the 'insanely-fast-whisper' implemantation of OpenAI Whisper for automatic speech recognition.
+        This method utilizes the 'insanely-fast-whisper' implementation of OpenAI Whisper for automatic speech recognition.
         It initializes a pipeline for transcription and retrieves the result. If speaker detection is enabled,
         it also annotates speakers in the transcription result.
 
