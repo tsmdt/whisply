@@ -120,7 +120,6 @@ class TranscriptionHandler:
             result['text'] = result['text'].strip()
         except ValueError as e:
             print(f'{e}')
-            print(f'whisply is now deviding batches')
         
         # Stop timing transcription
         logging.info(f"⭐️ Transcription completed in {time.time() - t_start:.2f} sec.")

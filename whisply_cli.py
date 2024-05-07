@@ -20,7 +20,7 @@ from whisply import little_helper, transcription
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 def main(files, output_dir, device, lang, detect_speakers, hf_token, srt, txt, config):
     """
-    WHISPLY processes audio and video files for transcription, optionally enabling speaker diarization and generating
+    WHISPLY 🗿 processes audio and video files for transcription, optionally enabling speaker diarization and generating
     .srt subtitles or saving transcriptions in .txt format. Default output is a .json file for each input file that 
     saves timestamps and transcripts.
     """
