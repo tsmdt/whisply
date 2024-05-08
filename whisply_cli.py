@@ -13,7 +13,7 @@ from whisply import little_helper, transcription
 @click.option('--lang', type=str, default=None, 
               help='Specify the language of the audio for transcription (en, de, fr ...). DEFAULT: None (= auto-detection)')
 @click.option('--detect_speakers', default=False, is_flag=True, 
-              help='Enable speaker diarization to identify and separate different speakers.')
+              help='Enable speaker diarization to identify and separate different speakers. Creates .rttm file.')
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker diarization.')
 @click.option('--srt', default=False, is_flag=True, help='Create .srt subtitles from the transcription.')
 @click.option('--txt', default=False, is_flag=True, help='Create .txt with the transcription.')
