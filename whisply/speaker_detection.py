@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 from pyannote.audio import Pipeline
 from pyannote.core import Annotation
-from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
 from whisply import little_helper
 
 
@@ -39,42 +38,46 @@ def annotate_speakers(filepath: Path, result: dict, device: str, hf_token: str) 
     if is_video:
         audio_path = Path(filepath).with_suffix('.wav')
         little_helper.convert_video_to_wav(videofile_path=Path(filepath), 
-                                           output_audio_path=audio_path.as_posix())
+                                           output_audio_path=str(audio_path))
         filepath = audio_path
     
     # Load and time the pipeline for diarization
     p_start = time.time()
+    
     try:
         diarization_pipeline = Pipeline.from_pretrained('pyannote/speaker-diarization-3.1', 
                                                         use_auth_token=hf_token)
         if device in ['cuda:0', 'cuda']:
             diarization_pipeline = diarization_pipeline.to(torch.device('cuda'))
+        
     except Exception as e:
         logger.error(f"Error loading diarization pipeline: {e}")
         raise RuntimeError("Failed to load diarization pipeline")
+    
     logger.info(f"Diarization pipeline loaded in {time.time() - p_start:.2f} sec.")
 
     # Start diarization and time the process
     logger.info("Starting diarization process")
     d_start = time.time()
     
-    with Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(style = "bright_yellow", pulse_style = "bright_cyan"),
-        TimeElapsedColumn()
-    ) as progress:
-        progress.add_task(f"[green]Annotating Speakers ({device.upper()}) → {filepath.name[:20]}..{filepath.suffix}", 
-                            total = None)
-        
-        # Diarize audio
+    # Define diarization function
+    def diarize():
         diarization = diarization_pipeline(filepath)
-            
-        # Append annotations to results dict     
         segments = []
         for segment, _, label in diarization.itertracks(yield_label=True):
             temp = {"timestamp": [round(segment.start, 2), round(segment.end, 2)], "speaker": label}
             segments.append(temp)
         result['speaker_annotation'] = segments
+        return segments, diarization
+    
+    # Add progress bar and run the diarization task
+    segments, diarization = little_helper.run_with_progress(
+        description=f"[orange_red1]Annotating Speakers ({device.upper()}) → {filepath.name[:20]}..{filepath.suffix}",
+        task=diarize
+    )
+    
+    # Add diarization to result dict
+    result['speaker_annotation'] = segments
         
     # Stop timing diarization   
     logger.info(f"🗣️ Speaker detection (diarization) completed in {time.time() - d_start:.2f} sec.")

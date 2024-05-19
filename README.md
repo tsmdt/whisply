@@ -1,5 +1,5 @@
 # whisply 🗿
-Transcribe, diarize, annotate and subtitle audio and video files with [Whisper](https://github.com/openai/whisper) ... fast!
+Transcribe, translate, diarize, annotate and subtitle audio and video files with [Whisper](https://github.com/openai/whisper) ... fast!
 
 **whisply** combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/chenxwh/insanely-fast-whisper) and batch processing of files (with mixed languages). It also enables speaker detection and annotation via [pyannote](https://github.com/pyannote/pyannote-audio). 
 
@@ -59,29 +59,31 @@ Usage: whisply_cli.py [OPTIONS]
 
   WHISPLY 🗿 processes audio and video files for transcription, optionally
   enabling speaker diarization and generating .srt subtitles or saving
-  transcriptions in .txt format. Default output is a .json file for each
-  input file that  saves timestamps and transcripts.
+  transcriptions in .txt format. Default output is a .json file for each input
+  file that  saves timestamps and transcripts.
 
 Options:
   --files PATH            Path to file, folder, URL or .list to process.
-                          [required]
-  --output_dir DIRECTORY  Folder where transcripts should be saved. DEFAULT:
+  --output_dir DIRECTORY  Folder where transcripts should be saved. Default:
                           "./transcriptions"
   --device [cpu|gpu|mps]  Select the computation device: CPU, GPU (nvidia
                           CUDA), or MPS (Metal Performance Shaders).
-  --lang TEXT             Specify the language of the audio for transcription
-                          (en, de, fr ...). DEFAULT: None (= auto-detection)
-  --detect_speakers       Enable speaker diarization to identify and
-                          separate different speakers. Creates .rttm file.
+  --lang TEXT             Specifies the language of the file your providing
+                          (en, de, fr ...). Default: auto-detection)
+  --detect_speakers       Enable speaker diarization to identify and separate
+                          different speakers. Creates .rttm file.
   --hf_token TEXT         HuggingFace Access token required for speaker
                           diarization.
+  --translate             Translate transcription to English.
   --srt                   Create .srt subtitles from the transcription.
   --txt                   Create .txt with the transcription.
   --config FILE           Path to configuration file.
+  --list_formats          List supported audio and video formats.
   --help                  Show this message and exit.
-```
+  ```
+
 ### Speaker Detection
-To use `--detect_speakers` you need to provide a valid [HuggingFace](https://huggingface.co) access token by using the `--hf_token` flag. In addition to this you have to accept *both* `pyannote` user conditions for version 3.0 and 3.1 of the segmentation model. Follow the instructions in the section *Requirements* of the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
+To use `--detect_speakers` you need to provide a valid [HuggingFace](https://huggingface.co) access token by using the `--hf_token` parameter. In addition to this you have to accept *both* `pyannote` user conditions for version 3.0 and 3.1 of the segmentation model. Follow the instructions in the section *Requirements* of the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
 
 ### Using config files
 You can provide a .json config file by using the `--config` which makes processing more user-friendly. An example config looks like this:
@@ -93,6 +95,7 @@ You can provide a .json config file by using the `--config` which makes processi
     "lang": null, 
     "detect_speakers": false,
     "hf_token": "Hugging Face Access Token",
+    "translate": true,
     "txt": true,
     "srt": false
 }

@@ -5,6 +5,7 @@
     "lang": null, 
     "detect_speakers": false,
     "hf_token": "Hugging Face Access Token",
+    "translate": true,
     "txt": true,
     "srt": false
 }

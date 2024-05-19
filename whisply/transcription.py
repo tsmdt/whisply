@@ -8,9 +8,7 @@ from datetime import datetime
 from transformers import pipeline
 from transformers.utils import is_flash_attn_2_available
 from faster_whisper import WhisperModel
-from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
 from whisply import little_helper, download_utils, speaker_detection
-
 
 # Set logging configuration
 logging.basicConfig(filename=f"whisply_{datetime.now().strftime('%d-%m-%Y')}.log", 
@@ -25,11 +23,12 @@ class TranscriptionHandler:
     - base_dir (str): The base directory for storing transcriptions.
     - model (str): The Whisper model to use for transcription.
     - device (str): The device for computation (e.g., 'cpu', 'mps', 'cuda:0').
-    - language (str): The language of the audio files. If not provided, it will be detected.
+    - file_language (str): The language of the audio files. If not provided, it will be detected.
     - detect_speakers (bool): A flag indicating whether to detect speakers in the audio files.
     - hf_token (str): Hugging Face token for authentication.
     - txt (bool): A flag indicating whether to save transcriptions in text format.
     - srt (bool): A flag indicating whether to save transcriptions in SRT format.
+    - translate (bool): A flag indication if a non-English file should be translated to English.
 
     Methods:
     - transcribe_with_insane_whisper(filepath: Path, file_language: str) -> dict: 
@@ -47,18 +46,20 @@ class TranscriptionHandler:
     >>> handler = TranscriptionHandler(base_dir='./transcriptions', model='large-v3', device='cpu')
     >>> handler.process_files(['audio1.mp3', 'audio2.mp3'])
     """
-    def __init__(self, base_dir='./transcriptions', model='large-v3', device='cpu', language=None, 
-                 detect_speakers=False, hf_token=None, txt=False, srt=False):
+    def __init__(self, base_dir='./transcriptions', model='large-v3', device='cpu', file_language=None, 
+                 detect_speakers=False, hf_token=None, txt=False, srt=False, translate=False, verbose=False):
         self.base_dir = Path(base_dir)
         little_helper.ensure_dir(self.base_dir)
         self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.mkv', '.mov', '.mp4']
         self.device = device
-        self.language = language
+        self.file_language = file_language
         self.model = model
         self.detect_speakers = detect_speakers
+        self.translate = translate
         self.hf_token = hf_token
         self.txt = txt
         self.srt = srt
+        self.verbose = verbose
         self.metadata = self._collect_metadata()
         self.filepaths = []
         self.output_dir = None
@@ -67,15 +68,16 @@ class TranscriptionHandler:
 
     def _collect_metadata(self):
         metadata = {'output_dir': self.base_dir,
-                    'language': self.language,
+                    'file_language': self.file_language,
                     'model': self.model,
                     'detect_speakers': self.detect_speakers,
+                    'translate': self.translate,
                     'srt': self.srt,
                     'txt': self.txt}
         return metadata
 
 
-    def transcribe_with_insane_whisper(self, filepath: Path, file_language: str) -> dict:
+    def transcribe_with_insane_whisper(self, filepath: Path) -> dict:
         """
         Transcribes an audio file using the 'insanely-fast-whisper' implementation: https://github.com/chenxwh/insanely-fast-whisper
 
@@ -95,6 +97,7 @@ class TranscriptionHandler:
         logging.info(f"⭐️ Transcription started with ⏭️ insane-whisper for {filepath.name}")
         t_start = time.time()
         
+        # language = file_language if file_language else self.language
         try:
             pipe = pipeline(
                 "automatic-speech-recognition",
@@ -103,21 +106,59 @@ class TranscriptionHandler:
                 device = self.device,
                 model_kwargs = {"attn_implementation": "flash_attention_2"} if is_flash_attn_2_available() else {"attn_implementation": "sdpa"},
             )
-            with Progress(
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(style = "bright_yellow", pulse_style = "bright_cyan"),
-                TimeElapsedColumn()
-            ) as progress:
-                progress.add_task(f"[cyan]Transcribing ({self.device.upper()}) → {filepath.name[:20]}..{filepath.suffix}", 
-                                total = None)
-                result = pipe(
+            
+            # Define transcription function
+            def transcription_task():
+                transcription_result = pipe(
                     str(filepath),
                     chunk_length_s = 30,
                     batch_size = 8 if self.device in ['cpu', 'mps'] else 24,
                     return_timestamps = True,
-                    generate_kwargs = {'language': file_language} if file_language else {'language': self.language}
+                    generate_kwargs = {'language': self.file_language},
                 )
-            result['text'] = result['text'].strip()
+                return transcription_result
+             
+            # Add progress bar and run the transcription task
+            transcription_result = little_helper.run_with_progress(
+                description=f"[cyan]Transcribing ({self.device.upper()}) → {filepath.name[:20]}..{filepath.suffix}",
+                task=transcription_task
+            )
+            
+            result = {'transcriptions': {}}
+            result['transcriptions'] = {
+                self.file_language: transcription_result
+            }
+            
+            # If verbose Flag 
+            if self.verbose:
+                print(result['transcriptions'][self.file_language]['text'])
+            
+            # Translation
+            if self.translate and self.file_language != 'en':
+                # Define translation function
+                def translation_task():
+                    translation_result = pipe(
+                        str(filepath),
+                        chunk_length_s = 30,
+                        batch_size = 8 if self.device in ['cpu', 'mps'] else 24,
+                        return_timestamps = True,
+                        generate_kwargs = {'task': 'translate',
+                                           'language': self.file_language}
+                    )
+                    return translation_result
+                
+                # Add progress bar and run the translation task
+                translation_result = little_helper.run_with_progress(
+                    description=f"[dark_blue]Translating ({self.device.upper()}) → {filepath.name[:20]}..{filepath.suffix}",
+                    task=translation_task
+                )
+                
+                result['transcriptions']['en'] = translation_result
+                
+                # If verbose Flag 
+                if self.verbose:
+                    print(result['transcriptions']['en']['text'])
+
         except ValueError as e:
             print(f'{e}')
         
@@ -135,7 +176,7 @@ class TranscriptionHandler:
         return {'transcription': result, 'diarization': diarization}
 
 
-    def transcribe_with_faster_whisper(self, filepath: Path, file_language: str, num_workers: int = 1) -> dict:
+    def transcribe_with_faster_whisper(self, filepath: Path, num_workers: int = 1) -> dict:
         """
         Transcribes an audio file using the 'faster-whisper' implementation: https://github.com/SYSTRAN/faster-whisper
 
@@ -158,28 +199,69 @@ class TranscriptionHandler:
         t_start = time.time()
         
         # Load model and set parameters
+        # language = file_language if file_language else self.language
         model = WhisperModel(self.model, device='cpu', num_workers=num_workers, compute_type='int8')
-        segments, _ = model.transcribe(str(filepath), beam_size=5, language=file_language if file_language else self.language)
         
-        result = {}
-        with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(style = "bright_yellow", pulse_style = "bright_cyan"),
-            TimeElapsedColumn(),
-        ) as progress:
-            progress.add_task(f"[cyan]Transcribing ({self.device.upper()}) → {filepath.name[:20]}..{filepath.suffix}", 
-                              total = None)
-            
-            segments_full = []    
+        # Define the transcription task
+        def transcription_task():
+            segments, _ = model.transcribe(str(filepath), beam_size=5, language=self.file_language)
+            chunks = []    
             for segment in segments:
-                seg = {}
-                seg['id'] = segment.id
-                seg['timestamp'] = (round(segment.start, 2), round(segment.end, 2))
-                seg['text'] = segment.text
-                segments_full.append(seg)
+                seg = {
+                    'timestamp': (round(segment.start, 2), round(segment.end, 2)),
+                    'text': segment.text
+                }
+                chunks.append(seg)
+                
+                # If verbose Flag 
+                if self.verbose:
+                    print(seg['text'])
+                    
+            return chunks
+        
+        # Add progress bar and run the transcription task
+        chunks = little_helper.run_with_progress(
+            description=f"[cyan]Transcribing ({self.device.upper()}) → {filepath.name[:20]}..{filepath.suffix}",
+            task=transcription_task
+        )
+        
+        # Create result dict and append transcriptions to it
+        result = {'transcriptions': {}}
+        result['transcriptions'][self.file_language] = {
+                'text': ' '.join([segment['text'].strip() for segment in chunks]),
+                'chunks': chunks
+                }
 
-        result['chunks'] = segments_full
-        result['text'] = ' '.join([segment['text'].strip() for segment in result['chunks']])
+        # Translation
+        if self.translate and self.file_language != 'en':
+            # Define the translation task
+            def translation_task():
+                segments, _ = model.transcribe(str(filepath), task='translate', language='en')
+                translation_chunks = []    
+                for segment in segments:
+                    seg = {
+                        'timestamp': (round(segment.start, 2), round(segment.end, 2)),
+                        'text': segment.text
+                    }
+                    translation_chunks.append(seg)
+                    
+                    # If verbose Flag 
+                    if self.verbose:
+                        print(seg['text'])
+                        
+                return translation_chunks
+            
+            # Add progress bar and run the translation task
+            translation_chunks = little_helper.run_with_progress(
+                description=f"[dark_blue]Translating ({self.device.upper()}) → {filepath.name[:20]}..{filepath.suffix}",
+                task=translation_task
+            )
+
+            # Add translation to result dict
+            result['transcriptions']['en'] = {
+                'text': ' '.join([segment['text'].strip() for segment in translation_chunks]),
+                'chunks': translation_chunks
+                }
         
         # Stop timing transcription
         logging.info(f"⭐️ Transcription completed in {time.time() - t_start:.2f} sec.")
@@ -193,7 +275,7 @@ class TranscriptionHandler:
         else:
             diarization = None
         return {'transcription': result, 'diarization': diarization}
-
+            
 
     def get_filepaths(self, filepath: str):
         # Clear filepaths list
@@ -236,30 +318,29 @@ class TranscriptionHandler:
     def detect_language(self, file: Path) -> str:   
         """
         Detects the language of the input file.
-
-        Example:
-            >>> detected_language = detect_language(Path("sample.mp3"))
-            >>> print(detected_language)
-            en
         """     
         logging.debug(f"Detecting language of file: {file.name}")
         
         # Load model for language detection 
         model = WhisperModel(self.model, device='cpu', compute_type='int8')
         
-        with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(style = "bright_yellow", pulse_style = "bright_cyan"),
-            TimeElapsedColumn(),
-        ) as progress:
-            progress.add_task(f"[green]Detecting language for → {file.name[:20]}..{file.suffix}", total=None)
+        # Define language detection task
+        def run_language_detection():
             _, info = model.transcribe(str(file), beam_size=5)
+            return info
+        
+        # Add progress bar and run the translation task
+        info = little_helper.run_with_progress(
+            description=f"[dark_goldenrod]Detecting language for → {file.name[:20]}..{file.suffix}",
+            task=run_language_detection                  
+        )    
+        
+        # Set self.file_language
+        self.file_language = info.language    
             
         print(f'Detected language → "{info.language}" with probability {info.language_probability:.2f}')
         logging.debug(f'Detected language → "{info.language}" with probability {info.language_probability:.2f}')
         
-        return info.language
-
 
     def process_files(self, files) -> None:
         """
@@ -288,22 +369,21 @@ class TranscriptionHandler:
         logging.debug(f"🚀 Processing files: {self.filepaths}")
 
         self.processed_files = []
-        for idx, filepath in enumerate(self.filepaths):
+        for idx, filepath in enumerate(self.filepaths):            
             # Create and set output_dir and output_filepath
             self.output_dir = little_helper.set_output_dir(filepath, self.base_dir)
             output_filepath = self.output_dir / Path(filepath).stem
             
-            # Detect language if no language parameter was provided to handle possible 
-            # language detection errors while processing multiple files
-            if not self.language:
-                file_language = self.detect_language(file=filepath)
+            # Detect language if no language parameter was provided 
+            if not self.file_language:
+                self.detect_language(file=filepath)
 
             # Transcription and diarization
             logging.debug(f"Transcribing file: {filepath.name}")
             if self.device in ['mps', 'cuda:0']:
-                result_data = self.transcribe_with_insane_whisper(filepath, file_language)
+                result_data = self.transcribe_with_insane_whisper(filepath)
             elif self.device == 'cpu':
-                result_data = self.transcribe_with_faster_whisper(filepath, file_language)
+                result_data = self.transcribe_with_faster_whisper(filepath)
             
             result = {
                 'id': f't_000{idx + 1}',
@@ -317,4 +397,6 @@ class TranscriptionHandler:
                                        srt=self.srt, 
                                        txt=self.txt,
                                        detect_speakers=self.detect_speakers)
+            
             self.processed_files.append(result)
+            self.file_language = None

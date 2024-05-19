@@ -4,6 +4,8 @@ import logging
 import ffmpeg
 
 from pathlib import Path
+from typing import Callable, Any
+from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
 
 
 # Set logging configuration
@@ -84,9 +86,9 @@ def save_transcription(result: dict, filepath: Path) -> None:
     print(f'Saved .json transcription → {filepath}.')
     
 
-def save_txt_transcript(result: dict, filepath: Path) -> None:
+def save_txt_transcript(transcription: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
-        txt_file.write(result['text'])
+        txt_file.write(transcription['text'].strip())
     print(f'Saved .txt transcript → {filepath}.')
 
 
@@ -107,11 +109,13 @@ def save_results(result: dict, srt: bool = False, txt: bool = False, detect_spea
     save_transcription(result['transcription'], filepath=Path(f"{result['output_filepath']}.json"))
     if srt:
         logger.info(f"""Saved .srt subtitles to {Path(f"{result['output_filepath']}.srt")}""")
-        srt_text = create_srt_subtitles(result['transcription'])
-        save_srt_subtitles(srt_text, filepath=Path(f"{result['output_filepath']}.srt"))
+        for language, transcription in result['transcription']['transcriptions'].items():
+            srt_text = create_srt_subtitles(transcription)
+            save_srt_subtitles(srt_text, filepath=Path(f"{result['output_filepath']}_{language}.srt"))
     if txt:
         logger.info(f"""Saved .txt transcript to {Path(f"{result['output_filepath']}.txt")}""")
-        save_txt_transcript(result['transcription'], filepath=Path(f"{result['output_filepath']}.txt"))
+        for language, transcription in result['transcription']['transcriptions'].items():
+            save_txt_transcript(transcription, filepath=Path(f"{result['output_filepath']}_{language}.txt"))
     if detect_speakers:
         logger.info(f"""Saved .rttm to {Path(f"{result['output_filepath']}.rttm")}""")
         save_rttm_annotations(result['diarization'], filepath=Path(f"{result['output_filepath']}.rttm"))
@@ -227,3 +231,22 @@ def convert_video_to_wav(videofile_path, output_audio_path):
         .run(overwrite_output=True)
     )
     
+
+def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
+    """
+    Helper function to run a task with a progress bar.
+
+    Parameters:
+    - description (str): The description to display in the progress bar.
+    - task (Callable[[], Any]): The task to run, which returns a result.
+
+    Returns:
+    - Any: The result returned by the task.
+    """
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(style="bright_yellow", pulse_style="bright_cyan"),
+        TimeElapsedColumn(),
+    ) as progress:
+        progress.add_task(description, total=None)
+        return task()
