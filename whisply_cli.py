@@ -20,7 +20,6 @@ from whisply import little_helper, transcription
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 @click.option('--list_formats', default=False, is_flag=True, help='List supported audio and video formats.')
 @click.option('--verbose', default=False, is_flag=True, help='Print text chunks during transcription.')
-# def main(files, output_dir, device, lang, detect_speakers, hf_token, translate, srt, txt, config, list_formats, verbose):
 def main(**kwargs):
     """
     WHISPLY 🗿 processes audio and video files for transcription, optionally enabling speaker diarization and generating
