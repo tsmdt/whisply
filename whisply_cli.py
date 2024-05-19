@@ -30,7 +30,7 @@ def main(**kwargs):
     if kwargs['config']:
         config_data = little_helper.load_config(Path(kwargs['config']))
         kwargs['files'] = kwargs['files'] or config_data.get('files')
-        kwargs['output_dir'] = config_data.get('output_dir') if config_data.get('output_dir') is not None else output_dir
+        kwargs['output_dir'] = config_data.get('output_dir') if config_data.get('output_dir') is not None else kwargs['output_dir']
         kwargs['device'] = config_data.get('device', kwargs['device'])
         kwargs['lang'] = config_data.get('lang', kwargs['lang'])
         kwargs['detect_speakers'] = config_data.get('detect_speakers', kwargs['detect_speakers'])
