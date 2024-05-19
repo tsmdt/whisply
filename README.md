@@ -79,6 +79,7 @@ Options:
   --txt                   Create .txt with the transcription.
   --config FILE           Path to configuration file.
   --list_formats          List supported audio and video formats.
+  --verbose               Print text chunks during transcription.
   --help                  Show this message and exit.
   ```
 
