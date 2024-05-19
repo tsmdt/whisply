@@ -98,7 +98,8 @@ You can provide a .json config file by using the `--config` which makes processi
     "hf_token": "Hugging Face Access Token",
     "translate": true,
     "txt": true,
-    "srt": false
+    "srt": false,
+    "verbose": true
 }
 ```
 ### Batch processing

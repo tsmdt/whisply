@@ -7,5 +7,6 @@
     "hf_token": "Hugging Face Access Token",
     "translate": true,
     "txt": true,
-    "srt": false
+    "srt": false,
+    "verbose": true
 }
