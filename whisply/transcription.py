@@ -97,7 +97,6 @@ class TranscriptionHandler:
         logging.info(f"⭐️ Transcription started with ⏭️ insane-whisper for {filepath.name}")
         t_start = time.time()
         
-        # language = file_language if file_language else self.language
         try:
             pipe = pipeline(
                 "automatic-speech-recognition",
@@ -199,7 +198,6 @@ class TranscriptionHandler:
         t_start = time.time()
         
         # Load model and set parameters
-        # language = file_language if file_language else self.language
         model = WhisperModel(self.model, device='cpu', num_workers=num_workers, compute_type='int8')
         
         # Define the transcription task
