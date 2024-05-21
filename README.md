@@ -50,7 +50,7 @@ python3.11 -m venv venv
 ```shell
 source venv/bin/activate
 ```
-**4. Install `whisply` with `pip`**
+**5. Install `whisply` with `pip`**
 ```python
 pip install .
 ```
