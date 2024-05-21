@@ -58,12 +58,10 @@ pip install .
 ## Usage
 ```
 >>> whisply --help
-Usage: whisply_cli.py [OPTIONS]
+Usage: whisply [OPTIONS]
 
-  WHISPLY 🗿 processes audio and video files for transcription, optionally
-  enabling speaker diarization and generating .srt subtitles or saving
-  transcriptions in .txt format. Default output is a .json file for each input
-  file that  saves timestamps and transcripts.
+  WHISPLY 🗿 Transcribe, translate, diarize, annotate and subtitle audio and
+  video files with Whisper ... fast!
 
 Options:
   --files PATH            Path to file, folder, URL or .list to process.
