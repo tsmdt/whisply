@@ -22,9 +22,7 @@ from whisply import little_helper, transcription
 @click.option('--verbose', default=False, is_flag=True, help='Print text chunks during transcription.')
 def main(**kwargs):
     """
-    WHISPLY 🗿 processes audio and video files for transcription, optionally enabling speaker diarization and generating
-    .srt subtitles or saving transcriptions in .txt format. Default output is a .json file for each input file that 
-    saves timestamps and transcripts.
+    WHISPLY 🗿 Transcribe, translate, diarize, annotate and subtitle audio and video files with Whisper ... fast!
     """
     # Load configuration from config.json if provided
     if kwargs['config']:

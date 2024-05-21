@@ -10,8 +10,9 @@ from transformers.utils import is_flash_attn_2_available
 from faster_whisper import WhisperModel
 from whisply import little_helper, download_utils, speaker_detection
 
+
 # Set logging configuration
-logging.basicConfig(filename=f"whisply_{datetime.now().strftime('%d-%m-%Y')}.log", 
+logging.basicConfig(filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
                     level=logging.DEBUG, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
 
 

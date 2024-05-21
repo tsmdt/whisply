@@ -1,7 +1,7 @@
 # whisply 🗿
 Transcribe, translate, diarize, annotate and subtitle audio and video files with [Whisper](https://github.com/openai/whisper) ... fast!
 
-**whisply** combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/chenxwh/insanely-fast-whisper) and batch processing of files (with mixed languages). It also enables speaker detection and annotation via [pyannote](https://github.com/pyannote/pyannote-audio). 
+`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/chenxwh/insanely-fast-whisper) and batch processing of files (with mixed languages). It also enables speaker detection and annotation via [pyannote](https://github.com/pyannote/pyannote-audio). 
 
 Supported output formats: `.json` `.txt` `.srt` `.rttm`
 
@@ -21,8 +21,8 @@ If you want to use a **GPU**:
 - nvidia GPU (CUDA)
 - Metal Performance Shaders (MPS) → Mac M1-M3
 
-If you want to activate **speaker detection / diarization**:
-- HuggingFace access token
+If you want to use **speaker detection / diarization**:
+- [HuggingFace Access Token](https://huggingface.co/docs/hub/security-tokens)
 
 ## Installation
 **1. Install `ffmpeg`**
@@ -30,7 +30,7 @@ If you want to activate **speaker detection / diarization**:
 --- macOS ---
 brew install ffmpeg
 
---- linux ---
+--- Linux ---
 sudo apt-get update
 sudo apt-get install ffmpeg
 
@@ -38,23 +38,26 @@ sudo apt-get install ffmpeg
 https://ffmpeg.org/download.html
 ```
 **2. Clone this repository and change to project folder**
-```
+```shell
 git clone https://github.com/th-schmidt/whisply.git
 cd whisply
 ```
-**3. Create a Python virtual environment and activate it**
-```
+**3. Create a Python virtual environment**
+```python
 python3.11 -m venv venv
+```
+**4. Activate the Python virtual environment**
+```shell
 source venv/bin/activate
 ```
-**4. Install dependencies with `pip`**
-```
-pip install -r requirement.txt
+**4. Install `whisply` with `pip`**
+```python
+pip install .
 ```
 
 ## Usage
 ```
->>> python whisply_cli.py
+>>> whisply --help
 Usage: whisply_cli.py [OPTIONS]
 
   WHISPLY 🗿 processes audio and video files for transcription, optionally
@@ -84,7 +87,8 @@ Options:
   ```
 
 ### Speaker Detection
-To use `--detect_speakers` you need to provide a valid [HuggingFace](https://huggingface.co) access token by using the `--hf_token` parameter. In addition to this you have to accept *both* `pyannote` user conditions for version 3.0 and 3.1 of the segmentation model. Follow the instructions in the section *Requirements* of the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
+To use the `--detect_speakers` option, you need to provide a valid [HuggingFace](https://huggingface.co) access token by using the `--hf_token` option. Additionally, you must accept the terms and conditions for both version 3.0 and version 3.1 of the `pyannote` segmentation model. For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
+
 
 ### Using config files
 You can provide a .json config file by using the `--config` which makes processing more user-friendly. An example config looks like this:
@@ -112,4 +116,4 @@ video_02.mp4
 ./my_files/
 https://youtu.be/KtOayYXEsN4?si=-0MS6KXbEWXA7dqo
 ```
-If you are transcribing multiple files **whisply** will first detect the language of each file.
+
