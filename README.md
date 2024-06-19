@@ -3,7 +3,7 @@ Transcribe, translate, diarize, annotate and subtitle audio and video files with
 
 `whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/chenxwh/insanely-fast-whisper) and batch processing of files (with mixed languages). It also enables speaker detection and annotation via [pyannote](https://github.com/pyannote/pyannote-audio). 
 
-Supported output formats: `.json` `.txt` `.srt` `.rttm`
+Supported output formats: `.json` `.txt` `.srt` `.webvtt` `.rttm`
 
 ## Table of contents
 * [Requirements](#requirements)
@@ -77,6 +77,7 @@ Options:
                           diarization.
   --translate             Translate transcription to English.
   --srt                   Create .srt subtitles from the transcription.
+  --webvtt                Create .webvtt subtitles from the transcription.
   --txt                   Create .txt with the transcription.
   --config FILE           Path to configuration file.
   --list_formats          List supported audio and video formats.
@@ -101,6 +102,7 @@ You can provide a .json config file by using the `--config` which makes processi
     "translate": true,
     "txt": true,
     "srt": false,
+    "webvtt": false,
     "verbose": true
 }
 ```

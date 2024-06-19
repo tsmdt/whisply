@@ -16,6 +16,7 @@ from whisply import little_helper, transcription
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker diarization.')
 @click.option('--translate', default=False, is_flag=True, help='Translate transcription to English.')
 @click.option('--srt', default=False, is_flag=True, help='Create .srt subtitles from the transcription.')
+@click.option('--webvtt', default=False, is_flag=True, help='Create .webvtt subtitles from the transcription.')
 @click.option('--txt', default=False, is_flag=True, help='Create .txt with the transcription.')
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 @click.option('--list_formats', default=False, is_flag=True, help='List supported audio and video formats.')
@@ -36,6 +37,7 @@ def main(**kwargs):
         kwargs['hf_token'] = config_data.get('hf_token', kwargs['hf_token'])
         kwargs['txt'] = config_data.get('txt', kwargs['txt'])
         kwargs['srt'] = config_data.get('srt', kwargs['srt'])
+        kwargs['webvtt'] = config_data.get('webvtt', kwargs['webvtt'])
         kwargs['verbose'] = config_data.get('verbose', kwargs['verbose'])
 
     # Check if speaker detection is enabled but no HuggingFace token is provided
@@ -56,6 +58,7 @@ def main(**kwargs):
                                                  hf_token=kwargs['hf_token'], 
                                                  txt=kwargs['txt'],
                                                  srt=kwargs['srt'],
+                                                 webvtt=kwargs['webvtt'],
                                                  verbose=kwargs['verbose'])
     # Process files
     service.process_files(kwargs['files'])

@@ -48,7 +48,7 @@ class TranscriptionHandler:
     >>> handler.process_files(['audio1.mp3', 'audio2.mp3'])
     """
     def __init__(self, base_dir='./transcriptions', model='large-v3', device='cpu', file_language=None, 
-                 detect_speakers=False, hf_token=None, txt=False, srt=False, translate=False, verbose=False):
+                 detect_speakers=False, hf_token=None, txt=False, srt=False, webvtt=False, translate=False, verbose=False):
         self.base_dir = Path(base_dir)
         little_helper.ensure_dir(self.base_dir)
         self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.mkv', '.mov', '.mp4']
@@ -60,6 +60,7 @@ class TranscriptionHandler:
         self.hf_token = hf_token
         self.txt = txt
         self.srt = srt
+        self.webvtt = webvtt
         self.verbose = verbose
         self.metadata = self._collect_metadata()
         self.filepaths = []
@@ -74,6 +75,7 @@ class TranscriptionHandler:
                     'detect_speakers': self.detect_speakers,
                     'translate': self.translate,
                     'srt': self.srt,
+                    'webvtt': self.webvtt,
                     'txt': self.txt}
         return metadata
 
@@ -395,6 +397,7 @@ class TranscriptionHandler:
             little_helper.save_results(result=result, 
                                        srt=self.srt, 
                                        txt=self.txt,
+                                       webvtt=self.webvtt,
                                        detect_speakers=self.detect_speakers)
             
             self.processed_files.append(result)

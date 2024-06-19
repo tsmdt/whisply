@@ -8,5 +8,6 @@
     "translate": true,
     "txt": true,
     "srt": false,
+    "webvtt": false,
     "verbose": true
 }

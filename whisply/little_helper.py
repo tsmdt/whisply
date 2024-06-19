@@ -90,12 +90,12 @@ def save_txt_transcript(transcription: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(transcription['text'].strip())
     print(f'Saved .txt transcript → {filepath}.')
-
-
-def save_srt_subtitles(srt_text: str, filepath: Path) -> None:
-    with open(filepath, 'w', encoding='utf-8') as srt_file:
-        srt_file.write(srt_text)
-    print(f'Saved .srt subtitles → {filepath}.')
+    
+    
+def save_subtitles(text: str, type: str, filepath: Path) -> None:
+    with open(filepath, 'w', encoding='utf-8') as subtitle_file:
+        subtitle_file.write(text)
+    print(f'Saved .{type} subtitles → {filepath}.')
     
     
 def save_rttm_annotations(diarization, filepath: Path) -> None:
@@ -104,14 +104,19 @@ def save_rttm_annotations(diarization, filepath: Path) -> None:
     print(f'Saved .rttm annotations → {filepath}.')
     
     
-def save_results(result: dict, srt: bool = False, txt: bool = False, detect_speakers: bool = False) -> None:
+def save_results(result: dict, srt: bool = False, webvtt: bool = False, txt: bool = False, detect_speakers: bool = False) -> None:
     logger.info(f"""Saved .json transcription to {Path(f"{result['output_filepath']}.json")}""")
     save_transcription(result['transcription'], filepath=Path(f"{result['output_filepath']}.json"))
     if srt:
         logger.info(f"""Saved .srt subtitles to {Path(f"{result['output_filepath']}.srt")}""")
         for language, transcription in result['transcription']['transcriptions'].items():
             srt_text = create_srt_subtitles(transcription)
-            save_srt_subtitles(srt_text, filepath=Path(f"{result['output_filepath']}_{language}.srt"))
+            save_subtitles(srt_text, type='srt', filepath=Path(f"{result['output_filepath']}_{language}.srt"))
+    if webvtt:
+        logger.info(f"""Saved .webvtt subtitles to {Path(f"{result['output_filepath']}.webvtt")}""")
+        for language, transcription in result['transcription']['transcriptions'].items():
+            webvtt_text = create_webvtt_subtitles(transcription)
+            save_subtitles(webvtt_text, type='webvtt', filepath=Path(f"{result['output_filepath']}_{language}.webvtt"))
     if txt:
         logger.info(f"""Saved .txt transcript to {Path(f"{result['output_filepath']}.txt")}""")
         for language, transcription in result['transcription']['transcriptions'].items():
@@ -121,13 +126,13 @@ def save_results(result: dict, srt: bool = False, txt: bool = False, detect_spea
         save_rttm_annotations(result['diarization'], filepath=Path(f"{result['output_filepath']}.rttm"))
 
 
-def format_time(seconds) -> str:
+def format_time(seconds, delimiter=',') -> str:
     # Function for time conversion
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     ms = int((seconds - int(seconds)) * 1000)
-    return f"{h:02}:{m:02}:{s:02},{ms:03}"
+    return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
     
     
 def create_srt_subtitles(transcription_dict: dict) -> str:
@@ -181,12 +186,42 @@ def create_srt_subtitles(transcription_dict: dict) -> str:
         if start_time is None or end_time is None: 
             continue
         
-        start_time_str = format_time(start_time)
-        end_time_str = format_time(end_time)
+        start_time_str = format_time(start_time, delimiter=',')
+        end_time_str = format_time(end_time, delimiter=',')
         text = chunk['text']
         seg_id += 1
         srt_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
     return srt_text
+
+
+def create_webvtt_subtitles(transcription_dict: dict) -> str:
+    """
+    Converts a transcription dictionary into WebVTT (Web Video Text Tracks) format for subtitles.
+    """    
+    webvtt_text = ''
+    seg_id = 0
+    
+    # Creating subtitles from transcription_dict
+    for chunk in transcription_dict['chunks']:
+        start_time = chunk['timestamp'][0]
+        end_time = chunk['timestamp'][1]
+        
+        # Skip chunk if there is no start_time or end_time
+        if start_time is None or end_time is None: 
+            continue
+        
+        start_time_str = format_time(start_time, delimiter='.')
+        end_time_str = format_time(end_time, delimiter='.')
+        text = chunk['text']
+        
+        # Write WebVTT header
+        if seg_id == 0:
+            webvtt_text += 'WEBVTT\n\n'
+        
+        # Write subtitle content
+        seg_id += 1
+        webvtt_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
+    return webvtt_text
 
 
 def convert_video_to_wav(videofile_path, output_audio_path):
