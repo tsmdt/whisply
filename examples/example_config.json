@@ -9,5 +9,6 @@
     "txt": true,
     "srt": false,
     "webvtt": false,
+    "sub_length": 10,
     "verbose": true
 }

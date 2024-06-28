@@ -17,6 +17,8 @@ from whisply import little_helper, transcription
 @click.option('--translate', default=False, is_flag=True, help='Translate transcription to English.')
 @click.option('--srt', default=False, is_flag=True, help='Create .srt subtitles from the transcription.')
 @click.option('--webvtt', default=False, is_flag=True, help='Create .webvtt subtitles from the transcription.')
+@click.option('--sub_length', default=None, type=int, help="""Maximum duration in seconds for each subtitle block (Default: auto);
+              e.g. "10" produces subtitles where each individual subtitle block covers at least 10 seconds of the video.""")
 @click.option('--txt', default=False, is_flag=True, help='Create .txt with the transcription.')
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 @click.option('--list_formats', default=False, is_flag=True, help='List supported audio and video formats.')
@@ -38,6 +40,7 @@ def main(**kwargs):
         kwargs['txt'] = config_data.get('txt', kwargs['txt'])
         kwargs['srt'] = config_data.get('srt', kwargs['srt'])
         kwargs['webvtt'] = config_data.get('webvtt', kwargs['webvtt'])
+        kwargs['sub_length'] = config_data.get('sub_length', kwargs['sub_length'])
         kwargs['verbose'] = config_data.get('verbose', kwargs['verbose'])
 
     # Check if speaker detection is enabled but no HuggingFace token is provided
@@ -59,6 +62,7 @@ def main(**kwargs):
                                                  txt=kwargs['txt'],
                                                  srt=kwargs['srt'],
                                                  webvtt=kwargs['webvtt'],
+                                                 sub_length=kwargs['sub_length'],
                                                  verbose=kwargs['verbose'])
     # Process files
     service.process_files(kwargs['files'])

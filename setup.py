@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setup(
     name="whisply",
     author="Thomas Schmidt",
-    version=0.1,
+    version='0.1.2',
     packages=find_packages(),
     license="Apache-2.0",
     description="Transcribe, translate, diarize, annotate and subtitle audio and video files with Whisper ... fast!",

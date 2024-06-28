@@ -78,6 +78,10 @@ Options:
   --translate             Translate transcription to English.
   --srt                   Create .srt subtitles from the transcription.
   --webvtt                Create .webvtt subtitles from the transcription.
+  --sub_length INTEGER    Maximum duration in seconds for each subtitle block
+                          (Default: auto); e.g. "10" produces subtitles where
+                          each individual subtitle block covers at least 10
+                          seconds of the video.
   --txt                   Create .txt with the transcription.
   --config FILE           Path to configuration file.
   --list_formats          List supported audio and video formats.
@@ -103,6 +107,7 @@ You can provide a .json config file by using the `--config` which makes processi
     "txt": true,
     "srt": false,
     "webvtt": false,
+    "sub_length": 10,
     "verbose": true
 }
 ```

@@ -4,6 +4,7 @@ import logging
 import ffmpeg
 
 from pathlib import Path
+from datetime import timedelta
 from typing import Callable, Any
 from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
 
@@ -104,18 +105,23 @@ def save_rttm_annotations(diarization, filepath: Path) -> None:
     print(f'Saved .rttm annotations → {filepath}.')
     
     
-def save_results(result: dict, srt: bool = False, webvtt: bool = False, txt: bool = False, detect_speakers: bool = False) -> None:
+def save_results(result: dict, 
+                 srt: bool = False, 
+                 webvtt: bool = False, 
+                 sub_length: int = None,
+                 txt: bool = False, 
+                 detect_speakers: bool = False) -> None:
     logger.info(f"""Saved .json transcription to {Path(f"{result['output_filepath']}.json")}""")
     save_transcription(result['transcription'], filepath=Path(f"{result['output_filepath']}.json"))
     if srt:
         logger.info(f"""Saved .srt subtitles to {Path(f"{result['output_filepath']}.srt")}""")
         for language, transcription in result['transcription']['transcriptions'].items():
-            srt_text = create_srt_subtitles(transcription)
+            srt_text = create_subtitles(transcription, sub_length, type='srt')
             save_subtitles(srt_text, type='srt', filepath=Path(f"{result['output_filepath']}_{language}.srt"))
     if webvtt:
         logger.info(f"""Saved .webvtt subtitles to {Path(f"{result['output_filepath']}.webvtt")}""")
         for language, transcription in result['transcription']['transcriptions'].items():
-            webvtt_text = create_webvtt_subtitles(transcription)
+            webvtt_text = create_subtitles(transcription, sub_length, type='webvtt')
             save_subtitles(webvtt_text, type='webvtt', filepath=Path(f"{result['output_filepath']}_{language}.webvtt"))
     if txt:
         logger.info(f"""Saved .txt transcript to {Path(f"{result['output_filepath']}.txt")}""")
@@ -133,95 +139,78 @@ def format_time(seconds, delimiter=',') -> str:
     s = int(seconds % 60)
     ms = int((seconds - int(seconds)) * 1000)
     return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
-    
-    
-def create_srt_subtitles(transcription_dict: dict) -> str:
-    """
-    Converts a transcription dictionary into SRT (SubRip Text) format for subtitles.
 
-    The function processes each text chunk in the transcription dictionary. Each chunk is expected
-    to contain a 'timestamp' key with a tuple of start and end times, and a 'text' key with the
-    corresponding transcript text. Chunks without valid start or end times are skipped.
+    
+def create_subtitles(transcription_dict: dict, sub_length: int = None, type: str = 'srt') -> str:
+    """
+    Converts a transcription dictionary into subtitle format (.srt or .webvtt).
 
     Args:
-        transcription_dict (dict): A dictionary containing transcription data, with a key 'chunks'
-                                   that holds a list of dictionaries. Each dictionary in this list
-                                   should have a 'timestamp' key with a tuple (start_time, end_time)
-                                   and a 'text' key with the transcription text.
+        transcription_dict (dict): Dictionary containing transcription data with 'chunks'.
+        sub_length (int, optional): Maximum duration in seconds for each subtitle block.
+        type (str, optional): Subtitle format, either 'srt' or 'webvtt'. Default is 'srt'.
 
     Returns:
-        str: A string formatted as SRT, which is composed of segments where each segment includes a
-             sequence number, the timestamp interval, the transcript text, and a blank line to
-             separate entries.
-
-    Example:
-        transcription_dict = {
-            "chunks": [
-                {"timestamp": (30, 45), "text": "Hello, world."},
-                {"timestamp": (50, 60), "text": "This is an example."}
-            ]
-        }
-        srt_result = create_srt_subtitles(transcription_dict)
-        print(srt_result)
-        
-        Output:
-        
-        1
-        00:00:30,000 --> 00:00:45,000
-        Hello, world.
-        
-        2
-        00:00:50,000 --> 00:00:60,000
-        This is an example.
-    """    
-    srt_text = ''
-    seg_id = 0
-    
-    # Creating subtitles from transcription_dict
-    for chunk in transcription_dict['chunks']:
-        start_time = chunk['timestamp'][0]
-        end_time = chunk['timestamp'][1]
-        
-        # Skip chunk if there is no start_time or end_time
-        if start_time is None or end_time is None: 
-            continue
-        
-        start_time_str = format_time(start_time, delimiter=',')
-        end_time_str = format_time(end_time, delimiter=',')
-        text = chunk['text']
-        seg_id += 1
-        srt_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
-    return srt_text
-
-
-def create_webvtt_subtitles(transcription_dict: dict) -> str:
+        str: Formatted subtitle text in the specified format.
     """
-    Converts a transcription dictionary into WebVTT (Web Video Text Tracks) format for subtitles.
-    """    
-    webvtt_text = ''
+    subtitle_text = ''
     seg_id = 0
+    merged_chunks = []
+    current_block = {"start": None, "end": None, "text": ""}
     
-    # Creating subtitles from transcription_dict
+    # Merging chunks based on sub_length
     for chunk in transcription_dict['chunks']:
         start_time = chunk['timestamp'][0]
         end_time = chunk['timestamp'][1]
+        text = chunk['text']
         
         # Skip chunk if there is no start_time or end_time
         if start_time is None or end_time is None: 
             continue
         
-        start_time_str = format_time(start_time, delimiter='.')
-        end_time_str = format_time(end_time, delimiter='.')
-        text = chunk['text']
+        if sub_length is not None:
+            if current_block["start"] is None:
+                current_block["start"] = start_time
+                current_block["end"] = end_time
+                current_block["text"] = text
+            else:
+                current_duration = current_block["end"] - current_block["start"]
+                additional_duration = end_time - start_time
+                
+                if current_duration + additional_duration <= sub_length:
+                    current_block["end"] = end_time
+                    current_block["text"] += text
+                else:
+                    merged_chunks.append(current_block)
+                    current_block = {"start": start_time, "end": end_time, "text": text}
+        else:
+            merged_chunks.append({"start": start_time, "end": end_time, "text": text})
+
+    if current_block["start"] is not None:
+        merged_chunks.append(current_block)
+    
+    for chunk in merged_chunks:
+        # Create .srt subtitles
+        if type == 'srt':
+            start_time_str = format_time(chunk['start'], delimiter=',')
+            end_time_str = format_time(chunk['end'], delimiter=',')
+            text = chunk['text'].replace('’', '\'')
+            seg_id += 1
+            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
         
-        # Write WebVTT header
-        if seg_id == 0:
-            webvtt_text += 'WEBVTT\n\n'
+        # Create .webvtt subtitles    
+        elif type == 'webvtt':
+            start_time_str = format_time(chunk['start'], delimiter='.')
+            end_time_str = format_time(chunk['end'], delimiter='.')
+            text = chunk['text'].replace('’', '\'')
+
+            if seg_id == 0:
+                subtitle_text += 'WEBVTT\n\n'
+                
+            seg_id += 1
+            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
         
-        # Write subtitle content
-        seg_id += 1
-        webvtt_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
-    return webvtt_text
+    return subtitle_text
 
 
 def convert_video_to_wav(videofile_path, output_audio_path):
