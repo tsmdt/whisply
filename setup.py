@@ -12,7 +12,7 @@ setup(
     description="Transcribe, translate, diarize, annotate and subtitle audio and video files with Whisper ... fast!",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/th-schmidt/whisply",
+    url="https://github.com/tsmdt/whisply",
     install_requires=[
         'click==8.1.7',
         'faster-whisper==1.0.1',
@@ -31,7 +31,7 @@ setup(
         'torchmetrics==1.3.2',
         'transformers==4.39.3',
         'validators==0.28.1',
-        'yt-dlp==2024.4.9'
+        'yt-dlp==2024.07.01'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
