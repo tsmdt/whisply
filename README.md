@@ -93,7 +93,7 @@ Options:
 To use the `--detect_speakers` option, you need to provide a valid [HuggingFace](https://huggingface.co) access token by using the `--hf_token` option. Additionally, you must accept the terms and conditions for both version 3.0 and version 3.1 of the `pyannote` segmentation model. For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
 
 
-### Using config files
+### Using config files for batch processing
 You can provide a .json config file by using the `--config` which makes batch processing easy. An example config looks like this:
 ```
 {
