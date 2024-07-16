@@ -94,7 +94,7 @@ To use the `--detect_speakers` option, you need to provide a valid [HuggingFace]
 
 
 ### Using config files
-You can provide a .json config file by using the `--config` which makes processing more user-friendly. An example config looks like this:
+You can provide a .json config file by using the `--config` which makes batch processing easy. An example config looks like this:
 ```
 {
     "files": "path/to/files",

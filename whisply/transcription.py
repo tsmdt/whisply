@@ -346,41 +346,6 @@ class TranscriptionHandler:
             
         print(f'Detected language → "{info.language}" with probability {info.language_probability:.2f}')
         logging.debug(f'Detected language → "{info.language}" with probability {info.language_probability:.2f}')
-      
-
-    # def convert_file_format(self, filepath: Path) -> Path:
-    #     """
-    #     Converts file format of the input file to 16-bit little-endian PCM format (.wav)
-    #     """   
-
-    #     try:
-    #         probe = ffmpeg.probe(filepath)
-    #         audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
-    #         if not audio_streams:
-    #             print("No audio stream found.")
-    #             return False
-            
-    #         audio_stream = audio_streams[0]
-    #         codec_name = audio_stream.get('codec_name')
-    #         sample_rate = int(audio_stream.get('sample_rate', 0))
-    #         channels = int(audio_stream.get('channels', 0))
-
-    #         return codec_name == 'pcm_s16le' and sample_rate == 16000 and channels == 1
-    #     except ffmpeg.Error as e:
-    #         print(f"Error running ffprobe: {e}")
-    #         return False
-        
-        
-        
-    #     if filepath.suffix.lower() in self.file_formats:
-    #         try:
-    #             new_filepath = f"{filepath.parent}/{filepath.stem}_converted.wav"
-    #             little_helper.convert_file_format(old_filepath=filepath, new_filepath=new_filepath)
-    #             return Path(new_filepath)
-    #         except Exception as e:
-    #             raise RuntimeError(f"An error occurred while converting {filepath}: {e}")
-    #     else:
-    #         print(f"Unsupported file format. Please check 'whisply --list_formats' for all supported formats.")
         
 
     def process_files(self, files) -> None:
