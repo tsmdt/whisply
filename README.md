@@ -84,7 +84,7 @@ Options:
                           seconds of the video.
   --txt                   Create .txt with the transcription.
   --config FILE           Path to configuration file.
-  --list_formats          List supported audio and video formats.
+  --filetypes             List supported audio and video file types.
   --verbose               Print text chunks during transcription.
   --help                  Show this message and exit.
   ```
