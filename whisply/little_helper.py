@@ -311,13 +311,14 @@ def check_file_format(filepath: Path) -> Path:
                     description=f"[orchid]Converting file to .wav → {filepath.name[:20]}...wav ", 
                     task=lambda: convert_file_format(old_filepath=filepath, new_filepath=new_filepath)
                     )
-                
+            
                 return Path(new_filepath)
+            
             except Exception as e:
                 raise RuntimeError(f"An error occurred while converting {filepath}: {e}")
         else:
             return filepath
-    
+        
     except ffmpeg.Error as e:
         print(f"Error running ffprobe: {e}")
         print(f"You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")

@@ -31,7 +31,7 @@ setup(
         'torchmetrics==1.3.2',
         'transformers==4.39.3',
         'validators==0.28.1',
-        'yt-dlp==2024.07.01'
+        'yt-dlp>=2024.07.07'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
