@@ -18,10 +18,10 @@ from whisply import little_helper, transcription
 @click.option('--srt', default=False, is_flag=True, help='Create .srt subtitles from the transcription.')
 @click.option('--webvtt', default=False, is_flag=True, help='Create .webvtt subtitles from the transcription.')
 @click.option('--sub_length', default=None, type=int, help="""Maximum duration in seconds for each subtitle block (Default: auto);
-              e.g. "10" produces subtitles where each individual subtitle block covers at least 10 seconds of the video.""")
+              e.g. "10" produces subtitles where each individual subtitle block covers max 10 seconds of the video.""")
 @click.option('--txt', default=False, is_flag=True, help='Create .txt with the transcription.')
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
-@click.option('--list_formats', default=False, is_flag=True, help='List supported audio and video formats.')
+@click.option('--filetypes', default=False, is_flag=True, help='List supported audio and video file types.')
 @click.option('--verbose', default=False, is_flag=True, help='Print text chunks during transcription.')
 def main(**kwargs):
     """
@@ -48,7 +48,7 @@ def main(**kwargs):
         click.echo('---> Speaker diarization is enabled but no HuggingFace access token is provided.')
         return 
     
-    if kwargs['list_formats']:
+    if kwargs['filetypes']:
         click.echo(f"{' '.join(transcription.TranscriptionHandler().file_formats)}")
         return
 

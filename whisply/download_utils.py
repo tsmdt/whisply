@@ -72,6 +72,7 @@ def download_url(url: str, downloads_dir: Path) -> Path:
             renamed_file = downloaded_file.rename(f"{downloads_dir}/{new_filename}{downloaded_file.suffix}")
             logger.debug(f"Renamed downloaded file to {renamed_file}")
             return Path(renamed_file)
+        
     except Exception as e:
         print(f'Error downloading {url}: {e}')
         return None

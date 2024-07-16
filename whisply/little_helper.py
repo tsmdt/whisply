@@ -4,7 +4,7 @@ import logging
 import ffmpeg
 
 from pathlib import Path
-from datetime import timedelta
+# from datetime import timedelta
 from typing import Callable, Any
 from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
 
@@ -59,38 +59,68 @@ def normalize_filepath(filepath: str) -> Path:
     Example:
     --------
     >>> from pathlib import Path
-    >>> original_path = Path("/path/to/your/file/Example File.txt")
+    >>> original_path = Path("/path/to/your/file/Example File.MP3")
     >>> rename_file(original_path)
-    PosixPath('/path/to/your/file/example_file.txt')
-
+    PosixPath('/path/to/your/file/example_file.mp3')
     """
     original_path = Path(filepath)
     
     # Normalize title
     new_filename = re.sub(r'\W+', '_', original_path.stem)
+    
     if new_filename.startswith('_'):
         new_filename = new_filename[1:]
+        
     if new_filename.endswith('_'):
         new_filename = new_filename[:-1]
 
     # Construct new path
-    new_path = original_path.parent / f"{new_filename}{original_path.suffix}"
+    new_path = original_path.parent / f"{new_filename}{original_path.suffix.lower()}"
     
     # Rename file
     original_path.rename(new_path)
+    
     return new_path
 
 
-def save_transcription(result: dict, filepath: Path) -> None:
-    with open(filepath, 'w', encoding='utf-8') as fout:
-        json.dump(result, fout, indent=4)
-    print(f'Saved .json transcription → {filepath}.')
+def save_json(result: dict, filepath: Path) -> None:
+    # Exclude the 'diarization' object from dict as this object is only relevant for .rttm subtitles
+    filtered_result = {key: value for key, value in result.items() if key != 'diarization'}
     
+    with open(filepath, 'w', encoding='utf-8') as fout:
+        json.dump(filtered_result, fout, indent=4)
+    print(f'Saved .json → {filepath}.')
 
-def save_txt_transcript(transcription: dict, filepath: Path) -> None:
+
+def save_txt(transcription: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(transcription['text'].strip())
-    print(f'Saved .txt transcript → {filepath}.')
+    print(f'Saved .txt transcription → {filepath}.')
+    
+    
+def save_txt_with_speaker_annotation(chunks: dict, filepath: Path) -> None:
+    """
+    Write .txt by combining transcription chunks with speaker_annotation chunks.
+    """
+    current_speaker = None
+
+    txt = ''
+    for key in chunks.keys():
+        for item in chunks[key]:
+            if current_speaker == None:
+                txt += f"[{item['speakers'][0]}] {item['text'].strip()} "
+                current_speaker = item['speakers'][0]
+            elif current_speaker == item['speakers'][0]:
+                txt += f"{item['text'].strip()} "
+                current_speaker = item['speakers'][0]
+            else:
+                txt += f"[{item['speakers'][0]}] {item['text'].strip()} "
+                current_speaker = item['speakers'][0]
+    
+    with open(filepath, 'w', encoding='utf-8') as txt_file:
+        txt_file.write(txt.strip())
+        
+    print(f'Saved .txt transcription with speaker annotation → {filepath}.')
     
     
 def save_subtitles(text: str, type: str, filepath: Path) -> None:
@@ -105,39 +135,60 @@ def save_rttm_annotations(diarization, filepath: Path) -> None:
     print(f'Saved .rttm annotations → {filepath}.')
     
     
-def save_results(result: dict, 
-                 srt: bool = False, 
-                 webvtt: bool = False, 
-                 sub_length: int = None,
-                 txt: bool = False, 
-                 detect_speakers: bool = False) -> None:
-    logger.info(f"""Saved .json transcription to {Path(f"{result['output_filepath']}.json")}""")
-    save_transcription(result['transcription'], filepath=Path(f"{result['output_filepath']}.json"))
+def save_results(result: dict, srt: bool = False, webvtt: bool = False, sub_length: int = None,
+                 txt: bool = False, detect_speakers: bool = False) -> None:
+    """
+    Write various output formats to disk.
+    """
+    logger.info(f"""Saved .json to {Path(f"{result['output_filepath']}.json")}""")
+    
+    # Write .json
+    save_json(result, filepath=Path(f"{result['output_filepath']}.json"))
+    
+    # Write .srt
     if srt:
         logger.info(f"""Saved .srt subtitles to {Path(f"{result['output_filepath']}.srt")}""")
         for language, transcription in result['transcription']['transcriptions'].items():
             srt_text = create_subtitles(transcription, sub_length, type='srt')
             save_subtitles(srt_text, type='srt', filepath=Path(f"{result['output_filepath']}_{language}.srt"))
+            
+    # Write .webvtt
     if webvtt:
         logger.info(f"""Saved .webvtt subtitles to {Path(f"{result['output_filepath']}.webvtt")}""")
         for language, transcription in result['transcription']['transcriptions'].items():
             webvtt_text = create_subtitles(transcription, sub_length, type='webvtt')
             save_subtitles(webvtt_text, type='webvtt', filepath=Path(f"{result['output_filepath']}_{language}.webvtt"))
+    
+    # Write .txt
     if txt:
         logger.info(f"""Saved .txt transcript to {Path(f"{result['output_filepath']}.txt")}""")
+        
+        # If self.detect_speakers write additional .txt with annotated speakers
+        if detect_speakers:
+            for language, _ in result['transcription']['transcription_and_speaker_annotation'].items():
+                save_txt_with_speaker_annotation(
+                    chunks=result['transcription']['transcription_and_speaker_annotation'], 
+                    filepath=Path(f"{result['output_filepath']}_{language}_annotated.txt")
+                    )
+   
         for language, transcription in result['transcription']['transcriptions'].items():
-            save_txt_transcript(transcription, filepath=Path(f"{result['output_filepath']}_{language}.txt"))
+            save_txt(transcription, filepath=Path(f"{result['output_filepath']}_{language}.txt"))
+        
+    # Write .rttm
     if detect_speakers:
         logger.info(f"""Saved .rttm to {Path(f"{result['output_filepath']}.rttm")}""")
         save_rttm_annotations(result['diarization'], filepath=Path(f"{result['output_filepath']}.rttm"))
 
 
 def format_time(seconds, delimiter=',') -> str:
-    # Function for time conversion
+    """
+    Function for time conversion.
+    """
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     ms = int((seconds - int(seconds)) * 1000)
+    
     return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
 
     
@@ -213,7 +264,66 @@ def create_subtitles(transcription_dict: dict, sub_length: int = None, type: str
     return subtitle_text
 
 
-def convert_video_to_wav(videofile_path, output_audio_path):
+def check_file_format(filepath: Path) -> Path:
+    """
+    Checks the format of an audio file and converts it if it doesn't meet specified criteria.
+
+    This function uses `ffmpeg` to probe the metadata of an audio file at the given `filepath`.
+    It checks if the audio stream meets the following criteria:
+    - Codec name: 'pcm_s16le'
+    - Sample rate: 16000 Hz
+    - Number of channels: 1 (mono)
+
+    If the audio stream does not meet these criteria, the function attempts to convert the file
+    to meet the required format and saves the converted file with a '_converted' suffix in the same directory.
+    If the conversion is successful, the function returns the path to the converted file.
+
+    Args:
+        filepath (Path): The path to the audio file to be checked and potentially converted.
+
+    Returns:
+        Path: The path to the original file if it meets the criteria, or the path to the converted file.
+
+    Raises:
+        RuntimeError: If an error occurs during the conversion process.
+        ffmpeg.Error: If there is an error running `ffmpeg.probe`.
+    """ 
+    try:
+        probe = ffmpeg.probe(filepath)
+        audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
+        
+        if not audio_streams:
+            print("No audio stream found.")
+            return False
+        
+        audio_stream = audio_streams[0]
+        codec_name = audio_stream.get('codec_name')
+        sample_rate = int(audio_stream.get('sample_rate', 0))
+        channels = int(audio_stream.get('channels', 0))
+        
+        # Convert the file if its metadata do not match these criteria:
+        if codec_name != 'pcm_s16le' and sample_rate != 16000 and channels != 1:
+            try:
+                new_filepath = f"{filepath.parent}/{filepath.stem}_converted.wav"
+                
+                # Convert file and show progress bar
+                run_with_progress(
+                    description=f"[orchid]Converting file to .wav → {filepath.name[:20]}...wav ", 
+                    task=lambda: convert_file_format(old_filepath=filepath, new_filepath=new_filepath)
+                    )
+                
+                return Path(new_filepath)
+            except Exception as e:
+                raise RuntimeError(f"An error occurred while converting {filepath}: {e}")
+        else:
+            return filepath
+    
+    except ffmpeg.Error as e:
+        print(f"Error running ffprobe: {e}")
+        print(f"You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
+    
+
+def convert_file_format(old_filepath, new_filepath):
     """
     Converts a video file into an audio file in WAV format using the ffmpeg library.
 
@@ -223,36 +333,22 @@ def convert_video_to_wav(videofile_path, output_audio_path):
     overwritten if it already exists.
 
     Parameters:
-    videofile_path : str
+    old_filepath : str
         The path to the video file from which audio will be extracted. This must be a path
         to a file that ffmpeg can read.
-    output_audio_path : str
+    new_filepath : str
         The path where the converted audio file will be saved as a WAV file. If a file at this
         path already exists, it will be overwritten.
-
-    Raises:
-    FileNotFoundError:
-        If the `videofile_path` does not exist.
-    PermissionError:
-        If there is no permission to read the video file or write the audio file.
-    RuntimeError:
-        If ffmpeg encounters an issue during the conversion process.
-
-    Example:
-    --------
-    >>> convert_video_to_wav("/path/to/video.mp4", "/path/to/output/audio.wav")
-
-    Note:
-    The function requires ffmpeg to be installed and properly configured in the system path.
     """
     (
         ffmpeg
-        .input(videofile_path)
-        .output(output_audio_path, 
+        .input(old_filepath)
+        .output(new_filepath, 
                 acodec='pcm_s16le', # Audio codec: PCM signed 16-bit little-endian
                 ar='16000',         # Sampling rate 16 KHz
-                ac=1)               # Mono channel
-        .run(overwrite_output=True)
+                ac=1)               # Mono channel                       
+        .run(quiet=True,
+             overwrite_output=True)
     )
     
 

@@ -33,14 +33,6 @@ def annotate_speakers(filepath: Path, result: dict, device: str, hf_token: str) 
     """
     logger.info("🗣️ Speaker detection (diarization) started ...")
     
-    # Convert video to wav if necessary
-    is_video = Path(filepath).suffix in ['.mkv', '.mp4', '.mov']
-    if is_video:
-        audio_path = Path(filepath).with_suffix('.wav')
-        little_helper.convert_video_to_wav(videofile_path=Path(filepath), 
-                                           output_audio_path=str(audio_path))
-        filepath = audio_path
-    
     # Load and time the pipeline for diarization
     p_start = time.time()
     
@@ -81,9 +73,40 @@ def annotate_speakers(filepath: Path, result: dict, device: str, hf_token: str) 
         
     # Stop timing diarization   
     logger.info(f"🗣️ Speaker detection (diarization) completed in {time.time() - d_start:.2f} sec.")
-    
-    # Delete temporary audio file
-    if is_video:
-        audio_path.unlink()
-        
+
     return result, diarization
+
+
+def combine_transcription_with_speakers(result: dict) -> dict:
+    # Iterate through language of the transcriptions results
+    for language in result['transcription']['transcriptions'].keys():
+        chunks = result['transcription']['transcriptions'][language]['chunks']
+    
+        combined_data = []
+
+        # Iterate through all transcription chunks
+        for chunk in chunks:
+            chunk_start, chunk_end = chunk['timestamp']
+            chunk_text = chunk['text']
+            
+            # Find the corresponding speaker(s) for the transcription chunk
+            speakers = []
+            for speaker_segment in result['transcription']['speaker_annotation']:
+                speaker_start, speaker_end = speaker_segment['timestamp']
+                speaker_id = speaker_segment['speaker']
+                
+                # Check if the transcription chunk and speaker segment overlap
+                if not (chunk_end < speaker_start or chunk_start > speaker_end):
+                    speakers.append(speaker_id)
+            
+            # If a chunk overlaps multiple speakers, we can handle it by appending all relevant speakers
+            combined_data.append({
+                'timestamp': chunk['timestamp'],
+                'text': chunk_text,
+                'speakers': speakers
+            })
+        
+        # Append the combined transcription and speaker detection data
+        result['transcription']['transcription_and_speaker_annotation'] = {language: combined_data}
+        
+    return result

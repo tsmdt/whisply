@@ -8,6 +8,7 @@ from datetime import datetime
 from transformers import pipeline
 from transformers.utils import is_flash_attn_2_available
 from faster_whisper import WhisperModel
+
 from whisply import little_helper, download_utils, speaker_detection
 
 
@@ -52,7 +53,7 @@ class TranscriptionHandler:
                  translate=False, verbose=False):
         self.base_dir = Path(base_dir)
         little_helper.ensure_dir(self.base_dir)
-        self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.mkv', '.mov', '.mp4']
+        self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.mkv', '.mov', '.mp4', '.avi', '.mpeg']
         self.device = device
         self.file_language = file_language
         self.model = model
@@ -175,6 +176,8 @@ class TranscriptionHandler:
                                                                       result=result, 
                                                                       device=self.device,
                                                                       hf_token=self.hf_token)
+            
+            
         else:
             diarization = None
         return {'transcription': result, 'diarization': diarization}
@@ -239,7 +242,7 @@ class TranscriptionHandler:
         if self.translate and self.file_language != 'en':
             # Define the translation task
             def translation_task():
-                segments, _ = model.transcribe(str(filepath), task='translate', language='en')
+                segments, _ = model.transcribe(str(filepath), beam_size=5, task='translate', language='en')
                 translation_chunks = []    
                 for segment in segments:
                     seg = {
@@ -291,7 +294,7 @@ class TranscriptionHandler:
                 self.filepaths.append(downloaded_path)
         
         # Get single file with correct file_format
-        elif Path(filepath).suffix in self.file_formats:
+        elif Path(filepath).suffix.lower() in self.file_formats:
             filepath = little_helper.normalize_filepath(filepath)
             self.filepaths.append(Path(filepath))
         
@@ -311,7 +314,7 @@ class TranscriptionHandler:
                         downloaded_path = download_utils.download_url(lpath, downloads_dir=Path('./downloads'))
                         if downloaded_path:
                             self.filepaths.append(downloaded_path)
-                    elif Path(lpath).is_file() and Path(lpath).suffix in self.file_formats:
+                    elif Path(lpath).is_file() and Path(lpath).suffix.lower() in self.file_formats:
                         newpath = little_helper.normalize_filepath(lpath)
                         self.filepaths.append(Path(newpath))
         else:
@@ -343,6 +346,41 @@ class TranscriptionHandler:
             
         print(f'Detected language → "{info.language}" with probability {info.language_probability:.2f}')
         logging.debug(f'Detected language → "{info.language}" with probability {info.language_probability:.2f}')
+      
+
+    # def convert_file_format(self, filepath: Path) -> Path:
+    #     """
+    #     Converts file format of the input file to 16-bit little-endian PCM format (.wav)
+    #     """   
+
+    #     try:
+    #         probe = ffmpeg.probe(filepath)
+    #         audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
+    #         if not audio_streams:
+    #             print("No audio stream found.")
+    #             return False
+            
+    #         audio_stream = audio_streams[0]
+    #         codec_name = audio_stream.get('codec_name')
+    #         sample_rate = int(audio_stream.get('sample_rate', 0))
+    #         channels = int(audio_stream.get('channels', 0))
+
+    #         return codec_name == 'pcm_s16le' and sample_rate == 16000 and channels == 1
+    #     except ffmpeg.Error as e:
+    #         print(f"Error running ffprobe: {e}")
+    #         return False
+        
+        
+        
+    #     if filepath.suffix.lower() in self.file_formats:
+    #         try:
+    #             new_filepath = f"{filepath.parent}/{filepath.stem}_converted.wav"
+    #             little_helper.convert_file_format(old_filepath=filepath, new_filepath=new_filepath)
+    #             return Path(new_filepath)
+    #         except Exception as e:
+    #             raise RuntimeError(f"An error occurred while converting {filepath}: {e}")
+    #     else:
+    #         print(f"Unsupported file format. Please check 'whisply --list_formats' for all supported formats.")
         
 
     def process_files(self, files) -> None:
@@ -377,25 +415,35 @@ class TranscriptionHandler:
             self.output_dir = little_helper.set_output_dir(filepath, self.base_dir)
             output_filepath = self.output_dir / Path(filepath).stem
             
-            # Detect language if no language parameter was provided 
+            # Convert file format 
+            filepath = little_helper.check_file_format(filepath)
+            
+            # Detect language of filepath
             if not self.file_language:
                 self.detect_language(file=filepath)
 
             # Transcription and diarization
             logging.debug(f"Transcribing file: {filepath.name}")
+            
             if self.device in ['mps', 'cuda:0']:
                 result_data = self.transcribe_with_insane_whisper(filepath)
+                
             elif self.device == 'cpu':
                 result_data = self.transcribe_with_faster_whisper(filepath)
             
             result = {
-                'id': f't_000{idx + 1}',
-                'input_filepath': filepath,
+                'id': f'T_000{idx + 1}',
+                'input_filepath': str(filepath),
+                'output_filepath': str(output_filepath),
                 'transcription': result_data['transcription'],
-                'diarization': result_data['diarization'],
-                'output_filepath': output_filepath
+                'diarization': result_data['diarization']
             }
+            
+            # Combine transcription time stamps with diarization time stamps
+            if self.detect_speakers:
+                result = speaker_detection.combine_transcription_with_speakers(result)
 
+            # Save results
             little_helper.save_results(result=result, 
                                        srt=self.srt, 
                                        txt=self.txt,
