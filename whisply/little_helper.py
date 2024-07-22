@@ -293,7 +293,7 @@ def check_file_format(filepath: Path) -> Path:
         audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
         
         if not audio_streams:
-            print("No audio stream found.")
+            print(f"No audio stream found for {filepath}. Please check if ")
             return False
         
         audio_stream = audio_streams[0]
