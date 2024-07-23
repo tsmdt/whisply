@@ -9,6 +9,8 @@ from whisply import little_helper, transcription
               help='Folder where transcripts should be saved. Default: "./transcriptions"')
 @click.option('--device', default='cpu', type=click.Choice(['cpu', 'gpu', 'mps'], case_sensitive=False), 
               help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Metal Performance Shaders).')
+@click.option('--model', default='large-v2', type=click.Choice(['small', 'medium', 'large-v2', 'large-v3'], case_sensitive=False), 
+              help='Select the whisper model to use (Defaul: large-v2).')
 @click.option('--lang', type=str, default=None, 
               help='Specifies the language of the file your providing (en, de, fr ...). Default: auto-detection)')
 @click.option('--detect_speakers', default=False, is_flag=True, 
@@ -33,6 +35,7 @@ def main(**kwargs):
         kwargs['files'] = kwargs['files'] or config_data.get('files')
         kwargs['output_dir'] = config_data.get('output_dir') if config_data.get('output_dir') is not None else kwargs['output_dir']
         kwargs['device'] = config_data.get('device', kwargs['device'])
+        kwargs['model'] = config_data.get('model', kwargs['model'])
         kwargs['lang'] = config_data.get('lang', kwargs['lang'])
         kwargs['detect_speakers'] = config_data.get('detect_speakers', kwargs['detect_speakers'])
         kwargs['translate'] = config_data.get('translate', kwargs['translate'])
@@ -55,6 +58,7 @@ def main(**kwargs):
     # Instantiate TranscriptionHandler
     service = transcription.TranscriptionHandler(base_dir=kwargs['output_dir'],
                                                  device='cuda:0' if kwargs['device'] == 'gpu' else kwargs['device'],
+                                                 model=kwargs['model'],
                                                  file_language=kwargs['lang'], 
                                                  detect_speakers=kwargs['detect_speakers'], 
                                                  translate=kwargs['translate'],
