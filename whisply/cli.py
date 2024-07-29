@@ -6,16 +6,16 @@ from whisply import little_helper, transcription
 @click.command(no_args_is_help=True)
 @click.option('--files', type=click.Path(file_okay=True, dir_okay=True), help='Path to file, folder, URL or .list to process.')
 @click.option('--output_dir', default='./transcriptions', type=click.Path(file_okay=False, dir_okay=True), 
-              help='Folder where transcripts should be saved. Default: "./transcriptions"')
+              help='Folder where transcripts should be saved. Default: "./transcriptions".')
 @click.option('--device', default='cpu', type=click.Choice(['cpu', 'gpu', 'mps'], case_sensitive=False), 
-              help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Metal Performance Shaders).')
-@click.option('--model', default='large-v2', type=click.Choice(['small', 'medium', 'large-v2', 'large-v3'], case_sensitive=False), 
-              help='Select the whisper model to use (Defaul: large-v2).')
+              help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Mac M1-M3).')
+@click.option('--model', default='large-v2', type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3'], case_sensitive=False), 
+              help='Select the whisper model to use (Default: large-v2). Refers to whisper model size: https://huggingface.co/collections/openai')
 @click.option('--lang', type=str, default=None, 
-              help='Specifies the language of the file your providing (en, de, fr ...). Default: auto-detection)')
+              help='Specifies the language of the file your providing (en, de, fr ... Default: auto-detection).')
 @click.option('--detect_speakers', default=False, is_flag=True, 
-              help='Enable speaker diarization to identify and separate different speakers. Creates .rttm file.')
-@click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker diarization.')
+              help='Enable speaker detection to identify and annotate different speakers. Creates .rttm file.')
+@click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker detection.')
 @click.option('--translate', default=False, is_flag=True, help='Translate transcription to English.')
 @click.option('--srt', default=False, is_flag=True, help='Create .srt subtitles from the transcription.')
 @click.option('--webvtt', default=False, is_flag=True, help='Create .webvtt subtitles from the transcription.')

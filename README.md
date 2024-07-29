@@ -64,29 +64,39 @@ Usage: whisply [OPTIONS]
   video files with Whisper ... fast!
 
 Options:
-  --files PATH            Path to file, folder, URL or .list to process.
-  --output_dir DIRECTORY  Folder where transcripts should be saved. Default:
-                          "./transcriptions"
-  --device [cpu|gpu|mps]  Select the computation device: CPU, GPU (nvidia
-                          CUDA), or MPS (Metal Performance Shaders).
-  --lang TEXT             Specifies the language of the file your providing
-                          (en, de, fr ...). Default: auto-detection)
-  --detect_speakers       Enable speaker diarization to identify and separate
-                          different speakers. Creates .rttm file.
-  --hf_token TEXT         HuggingFace Access token required for speaker
-                          diarization.
-  --translate             Translate transcription to English.
-  --srt                   Create .srt subtitles from the transcription.
-  --webvtt                Create .webvtt subtitles from the transcription.
-  --sub_length INTEGER    Maximum duration in seconds for each subtitle block
-                          (Default: auto); e.g. "10" produces subtitles where
-                          each individual subtitle block covers at least 10
-                          seconds of the video.
-  --txt                   Create .txt with the transcription.
-  --config FILE           Path to configuration file.
-  --filetypes             List supported audio and video file types.
-  --verbose               Print text chunks during transcription.
-  --help                  Show this message and exit.
+  --files PATH                    Path to file, folder, URL or .list to
+                                  process.
+  --output_dir DIRECTORY          Folder where transcripts should be saved.
+                                  Default: "./transcriptions".
+  --device [cpu|gpu|mps]          Select the computation device: CPU, GPU
+                                  (nvidia CUDA), or MPS (Mac M1-M3).
+  --model [tiny|base|small|medium|large-v2|large-v3]
+                                  Select the whisper model to use (Default:
+                                  large-v2). Refers to whisper model size:
+                                  https://huggingface.co/collections/openai
+  --lang TEXT                     Specifies the language of the file your
+                                  providing (en, de, fr ... Default: auto-
+                                  detection).
+  --detect_speakers               Enable speaker detection to identify and
+                                  annotate different speakers. Creates .rttm
+                                  file.
+  --hf_token TEXT                 HuggingFace Access token required for
+                                  speaker detection.
+  --translate                     Translate transcription to English.
+  --srt                           Create .srt subtitles from the
+                                  transcription.
+  --webvtt                        Create .webvtt subtitles from the
+                                  transcription.
+  --sub_length INTEGER            Maximum duration in seconds for each
+                                  subtitle block (Default: auto); e.g. "10"
+                                  produces subtitles where each individual
+                                  subtitle block covers max 10 seconds of the
+                                  video.
+  --txt                           Create .txt with the transcription.
+  --config FILE                   Path to configuration file.
+  --filetypes                     List supported audio and video file types.
+  --verbose                       Print text chunks during transcription.
+  --help                          Show this message and exit.
   ```
 
 ### Speaker Detection
@@ -95,11 +105,13 @@ To use the `--detect_speakers` option, you need to provide a valid [HuggingFace]
 
 ### Using config files for batch processing
 You can provide a .json config file by using the `--config` which makes batch processing easy. An example config looks like this:
+
 ```
 {
     "files": "path/to/files",
     "output_dir": "./transcriptions",
     "device": "cpu",
+    "model": "large-v3",
     "lang": null, 
     "detect_speakers": false,
     "hf_token": "Hugging Face Access Token",
@@ -111,6 +123,7 @@ You can provide a .json config file by using the `--config` which makes batch pr
     "verbose": true
 }
 ```
+
 ### Batch processing
 Instead of providing a file, folder or URL by using the `--files` option, you can pass a `.list` with a mix of files, folders and URLs for processing. Example:
 ```

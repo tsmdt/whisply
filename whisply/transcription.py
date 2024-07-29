@@ -48,7 +48,7 @@ class TranscriptionHandler:
     >>> handler = TranscriptionHandler(base_dir='./transcriptions', model='large-v3', device='cpu')
     >>> handler.process_files(['audio1.mp3', 'audio2.mp3'])
     """
-    def __init__(self, base_dir='./transcriptions', model='large-v3', device='cpu', file_language=None, 
+    def __init__(self, base_dir='./transcriptions', model='large-v2', device='cpu', file_language=None, 
                  detect_speakers=False, hf_token=None, txt=False, srt=False, webvtt=False, sub_length=None,
                  translate=False, verbose=False):
         self.base_dir = Path(base_dir)
