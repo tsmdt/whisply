@@ -302,7 +302,7 @@ def check_file_format(filepath: Path) -> Path:
         channels = int(audio_stream.get('channels', 0))
         
         # Convert the file if its metadata do not match these criteria:
-        if codec_name != 'pcm_s16le' and sample_rate != 16000 and channels != 1:
+        if codec_name != 'pcm_s16le' or sample_rate != 16000 or channels != 1:
             try:
                 new_filepath = f"{filepath.parent}/{filepath.stem}_converted.wav"
                 
@@ -317,6 +317,10 @@ def check_file_format(filepath: Path) -> Path:
             except Exception as e:
                 raise RuntimeError(f"An error occurred while converting {filepath}: {e}")
         else:
+            print(f'No coversion for {filepath}')
+            print(f'Found code_name: {codec_name}')
+            print(f'Found sample_rate: {sample_rate}')
+            print(f'Found channels: {channels}')
             return filepath
         
     except ffmpeg.Error as e:
