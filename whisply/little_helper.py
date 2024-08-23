@@ -108,13 +108,13 @@ def save_txt_with_speaker_annotation(chunks: dict, filepath: Path) -> None:
     for key in chunks.keys():
         for item in chunks[key]:
             if current_speaker == None:
-                txt += f"[{item['speakers'][0]}] {item['text'].strip()} "
+                txt += f"\n[{item['speakers'][0]}]\n{item['text'].strip()} "
                 current_speaker = item['speakers'][0]
             elif current_speaker == item['speakers'][0]:
                 txt += f"{item['text'].strip()} "
                 current_speaker = item['speakers'][0]
             else:
-                txt += f"[{item['speakers'][0]}] {item['text'].strip()} "
+                txt += f"\n[{item['speakers'][0]}]\n{item['text'].strip()} "
                 current_speaker = item['speakers'][0]
     
     with open(filepath, 'w', encoding='utf-8') as txt_file:
