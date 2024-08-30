@@ -103,25 +103,30 @@ def save_txt_with_speaker_annotation(chunks: dict, filepath: Path) -> None:
     Write .txt by combining transcription chunks with speaker_annotation chunks.
     """
     current_speaker = None
-
     txt = ''
+
     for key in chunks.keys():
         for item in chunks[key]:
-            if current_speaker == None:
-                txt += f"\n[{item['speakers'][0]}]\n{item['text'].strip()} "
-                current_speaker = item['speakers'][0]
-            elif current_speaker == item['speakers'][0]:
-                txt += f"{item['text'].strip()} "
-                current_speaker = item['speakers'][0]
+            # Ensure the speakers list is not empty
+            if not item['speakers']:
+                # Handle cases with no identified speakers
+                speaker_id = "Unknown Speaker"  # You can set a default speaker name
             else:
-                txt += f"\n[{item['speakers'][0]}]\n{item['text'].strip()} "
-                current_speaker = item['speakers'][0]
-    
+                speaker_id = item['speakers'][0]
+
+            if current_speaker is None:
+                txt += f"\n[{speaker_id}]\n{item['text'].strip()} "
+                current_speaker = speaker_id
+            elif current_speaker == speaker_id:
+                txt += f"{item['text'].strip()} "
+            else:
+                txt += f"\n[{speaker_id}]\n{item['text'].strip()} "
+                current_speaker = speaker_id
+
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(txt.strip())
-        
-    print(f'Saved .txt transcription with speaker annotation → {filepath}.')
-    
+
+    print(f'Saved .txt transcription with speaker annotation → {filepath}.'
     
 def save_subtitles(text: str, type: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as subtitle_file:
