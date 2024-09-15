@@ -126,7 +126,7 @@ def save_txt_with_speaker_annotation(chunks: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(txt.strip())
 
-    print(f'Saved .txt transcription with speaker annotation → {filepath}.'
+    print(f'Saved .txt transcription with speaker annotation → {filepath}.')
     
 def save_subtitles(text: str, type: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as subtitle_file:
