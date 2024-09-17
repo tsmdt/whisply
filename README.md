@@ -1,4 +1,6 @@
-# whisply 🗿
+# whisply 
+<img src="https://github.com/user-attachments/assets/3a15509b-b60e-4581-af87-ecaa8e5089a3" width="15%">
+
 Transcribe, translate, diarize, annotate and subtitle audio and video files with [Whisper](https://github.com/openai/whisper) ... fast!
 
 `whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/chenxwh/insanely-fast-whisper) and batch processing of files (with mixed languages). It also enables speaker detection and annotation via [pyannote](https://github.com/pyannote/pyannote-audio). 
