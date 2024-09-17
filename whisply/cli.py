@@ -9,25 +9,23 @@ from whisply import little_helper, transcription
               help='Folder where transcripts should be saved. Default: "./transcriptions".')
 @click.option('--device', default='cpu', type=click.Choice(['cpu', 'gpu', 'mps'], case_sensitive=False), 
               help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Mac M1-M3).')
-@click.option('--model', default='large-v2', type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3'], case_sensitive=False), 
+@click.option('--model', type=str, default='large-v2', 
               help='Select the whisper model to use (Default: large-v2). Refers to whisper model size: https://huggingface.co/collections/openai')
 @click.option('--lang', type=str, default=None, 
               help='Specifies the language of the file your providing (en, de, fr ... Default: auto-detection).')
-@click.option('--detect_speakers', default=False, is_flag=True, 
+@click.option('--annotate', default=False, is_flag=True, 
               help='Enable speaker detection to identify and annotate different speakers. Creates .rttm file.')
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker detection.')
 @click.option('--translate', default=False, is_flag=True, help='Translate transcription to English.')
-@click.option('--srt', default=False, is_flag=True, help='Create .srt subtitles from the transcription.')
-@click.option('--webvtt', default=False, is_flag=True, help='Create .webvtt subtitles from the transcription.')
-@click.option('--sub_length', default=None, type=int, help="""Maximum duration in seconds for each subtitle block (Default: auto);
-              e.g. "10" produces subtitles where each individual subtitle block covers max 10 seconds of the video.""")
-@click.option('--txt', default=False, is_flag=True, help='Create .txt with the transcription.')
+@click.option('--subtitle', default=False, is_flag=True, help='Create .srt and .webvtt subtitles from the transcription.')
+@click.option('--sub_length', default=None, type=int, help="""Subtitle length in words for each subtitle block (Default: 5);
+              e.g. "10" produces subtitles where each individual subtitle block covers exactly 10 words.""")
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 @click.option('--filetypes', default=False, is_flag=True, help='List supported audio and video file types.')
 @click.option('--verbose', default=False, is_flag=True, help='Print text chunks during transcription.')
 def main(**kwargs):
     """
-    WHISPLY 🗿 Transcribe, translate, diarize, annotate and subtitle audio and video files with Whisper ... fast!
+    WHISPLY 🤫 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
     """
     # Load configuration from config.json if provided
     if kwargs['config']:
@@ -37,17 +35,15 @@ def main(**kwargs):
         kwargs['device'] = config_data.get('device', kwargs['device'])
         kwargs['model'] = config_data.get('model', kwargs['model'])
         kwargs['lang'] = config_data.get('lang', kwargs['lang'])
-        kwargs['detect_speakers'] = config_data.get('detect_speakers', kwargs['detect_speakers'])
+        kwargs['annotate'] = config_data.get('annotate', kwargs['annotate'])
         kwargs['translate'] = config_data.get('translate', kwargs['translate'])
         kwargs['hf_token'] = config_data.get('hf_token', kwargs['hf_token'])
-        kwargs['txt'] = config_data.get('txt', kwargs['txt'])
-        kwargs['srt'] = config_data.get('srt', kwargs['srt'])
-        kwargs['webvtt'] = config_data.get('webvtt', kwargs['webvtt'])
+        kwargs['subtitle'] = config_data.get('subtitle', kwargs['subtitle'])
         kwargs['sub_length'] = config_data.get('sub_length', kwargs['sub_length'])
         kwargs['verbose'] = config_data.get('verbose', kwargs['verbose'])
 
     # Check if speaker detection is enabled but no HuggingFace token is provided
-    if kwargs['detect_speakers'] and not kwargs['hf_token']:
+    if kwargs['annotate'] and not kwargs['hf_token']:
         click.echo('---> Speaker diarization is enabled but no HuggingFace access token is provided.')
         return 
     
@@ -60,12 +56,10 @@ def main(**kwargs):
                                                  device='cuda:0' if kwargs['device'] == 'gpu' else kwargs['device'],
                                                  model=kwargs['model'],
                                                  file_language=kwargs['lang'], 
-                                                 detect_speakers=kwargs['detect_speakers'], 
+                                                 detect_speakers=kwargs['annotate'], 
                                                  translate=kwargs['translate'],
                                                  hf_token=kwargs['hf_token'], 
-                                                 txt=kwargs['txt'],
-                                                 srt=kwargs['srt'],
-                                                 webvtt=kwargs['webvtt'],
+                                                 subtitle=kwargs['subtitle'],
                                                  sub_length=kwargs['sub_length'],
                                                  verbose=kwargs['verbose'])
     # Process files

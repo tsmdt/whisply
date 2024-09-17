@@ -77,46 +77,46 @@ def annotate_speakers(filepath: Path, result: dict, device: str, hf_token: str) 
     return result, diarization
 
 
-def combine_transcription_with_speakers(result: dict) -> dict:
-    # Iterate through the language of the transcriptions results
-    for language in result['transcription']['transcriptions'].keys():
-        chunks = result['transcription']['transcriptions'][language]['chunks']
+# def combine_transcription_with_speakers(result: dict) -> dict:
+#     # Iterate through the language of the transcriptions results
+#     for language in result['transcription']['transcriptions'].keys():
+#         chunks = result['transcription']['transcriptions'][language]['chunks']
 
-        combined_data = []
+#         combined_data = []
 
-        # Iterate through all transcription chunks
-        for chunk in chunks:
-            chunk_start, chunk_end = chunk['timestamp']
-            chunk_text = chunk['text']
+#         # Iterate through all transcription chunks
+#         for chunk in chunks:
+#             chunk_start, chunk_end = chunk['timestamp']
+#             chunk_text = chunk['text']
 
-            # Ensure chunk_start and chunk_end are not None
-            if chunk_start is None or chunk_end is None:
-                logger.warning(f"Skipping chunk with None timestamp: {chunk}")
-                continue
+#             # Ensure chunk_start and chunk_end are not None
+#             if chunk_start is None or chunk_end is None:
+#                 logger.warning(f"Skipping chunk with None timestamp: {chunk}")
+#                 continue
 
-            # Find the corresponding speaker(s) for the transcription chunk
-            speakers = []
-            for speaker_segment in result['transcription']['speaker_annotation']:
-                speaker_start, speaker_end = speaker_segment['timestamp']
-                speaker_id = speaker_segment['speaker']
+#             # Find the corresponding speaker(s) for the transcription chunk
+#             speakers = []
+#             for speaker_segment in result['transcription']['speaker_annotation']:
+#                 speaker_start, speaker_end = speaker_segment['timestamp']
+#                 speaker_id = speaker_segment['speaker']
 
-                # Ensure speaker_start and speaker_end are not None
-                if speaker_start is None or speaker_end is None:
-                    logger.warning(f"Skipping speaker segment with None timestamp: {speaker_segment}")
-                    continue
+#                 # Ensure speaker_start and speaker_end are not None
+#                 if speaker_start is None or speaker_end is None:
+#                     logger.warning(f"Skipping speaker segment with None timestamp: {speaker_segment}")
+#                     continue
 
-                # Check if the transcription chunk and speaker segment overlap
-                if not (chunk_end < speaker_start or chunk_start > speaker_end):
-                    speakers.append(speaker_id)
+#                 # Check if the transcription chunk and speaker segment overlap
+#                 if not (chunk_end < speaker_start or chunk_start > speaker_end):
+#                     speakers.append(speaker_id)
             
-            # If a chunk overlaps multiple speakers, we can handle it by appending all relevant speakers
-            combined_data.append({
-                'timestamp': chunk['timestamp'],
-                'text': chunk_text,
-                'speakers': speakers
-            })
+#             # If a chunk overlaps multiple speakers, we can handle it by appending all relevant speakers
+#             combined_data.append({
+#                 'timestamp': chunk['timestamp'],
+#                 'text': chunk_text,
+#                 'speakers': speakers
+#             })
 
-        # Append the combined transcription and speaker detection data
-        result['transcription']['transcription_and_speaker_annotation'] = {language: combined_data}
+#         # Append the combined transcription and speaker detection data
+#         result['transcription']['transcription_and_speaker_annotation'] = {language: combined_data}
 
-    return result
+#     return result
