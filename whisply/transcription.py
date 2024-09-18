@@ -605,8 +605,10 @@ class TranscriptionHandler:
             
             result = {
                 'id': f'file_000{idx + 1}',
+                'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'input_filepath': str(filepath),
                 'output_filepath': str(output_filepath),
+                'model': self.model,
                 'transcription': result_data['transcription']['transcriptions'],
             }
 

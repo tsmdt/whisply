@@ -1,14 +1,64 @@
 import click
+import torch
 from pathlib import Path
 from whisply import little_helper, transcription
+
+
+def get_device(device: str = 'auto', exclude_mps: bool = True):
+    """
+    Determine the computation device based on user preference and availability.
+    
+    Parameters:
+    device (str): The computation device that will be checked for availability.
+    exclude_mps (bool): Flag to exclude MPS device for certain transcription tasks
+        that do not allow MPS backend (e.g. whisperX)
+    """
+    if device == 'auto' and exclude_mps:
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+            click.echo('→ Using GPU (CUDA)')
+        else:
+            device = 'cpu'
+            click.echo('→ No GPU (CUDA) available, using CPU')
+    elif device == 'auto':
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+            click.echo('→ Using GPU (CUDA)')
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+            click.echo('→ Using MPS')
+        else:
+            device = 'cpu'
+            click.echo('→ No GPU (CUDA) or MPS available, using CPU')
+    elif device == 'gpu':
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+            click.echo('→ Using GPU (CUDA)')
+        else:
+            device = 'cpu'
+            click.echo('→ No GPU (CUDA) available, using CPU')
+    elif device == 'mps' and not exclude_mps:
+        if torch.backends.mps.is_available():
+            device = 'mps'
+            click.echo('→ Using MPS')
+        else:
+            device = 'cpu'
+            click.echo('→ MPS not available, using CPU')
+    elif device == 'cpu':
+        device = 'cpu'
+        click.echo('→ Using CPU')
+    else:
+        device = 'cpu'
+        click.echo('→ No GPU (CUDA) or MPS available, using CPU')
+    return device
 
 
 @click.command(no_args_is_help=True)
 @click.option('--files', type=click.Path(file_okay=True, dir_okay=True), help='Path to file, folder, URL or .list to process.')
 @click.option('--output_dir', default='./transcriptions', type=click.Path(file_okay=False, dir_okay=True), 
               help='Folder where transcripts should be saved. Default: "./transcriptions".')
-@click.option('--device', default='cpu', type=click.Choice(['cpu', 'gpu', 'mps'], case_sensitive=False), 
-              help='Select the computation device: CPU, GPU (nvidia CUDA), or MPS (Mac M1-M3).')
+@click.option('--device', default='auto', type=click.Choice(['auto', 'cpu', 'gpu', 'mps'], case_sensitive=False), 
+              help='Select the computation device: auto (default), CPU, GPU (NVIDIA CUDA), or MPS (Mac M1-M3).')
 @click.option('--model', type=str, default='large-v2', 
               help='Select the whisper model to use (Default: large-v2). Refers to whisper model size: https://huggingface.co/collections/openai')
 @click.option('--lang', type=str, default=None, 
@@ -25,7 +75,7 @@ from whisply import little_helper, transcription
 @click.option('--verbose', default=False, is_flag=True, help='Print text chunks during transcription.')
 def main(**kwargs):
     """
-    WHISPLY 🤫 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
+    WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
     """
     # Load configuration from config.json if provided
     if kwargs['config']:
@@ -44,16 +94,20 @@ def main(**kwargs):
 
     # Check if speaker detection is enabled but no HuggingFace token is provided
     if kwargs['annotate'] and not kwargs['hf_token']:
-        click.echo('---> Speaker diarization is enabled but no HuggingFace access token is provided.')
+        click.echo('→ Please provide a HuggingFace access token (--hf_token) to enable speaker annotation.')
         return 
     
     if kwargs['filetypes']:
         click.echo(f"{' '.join(transcription.TranscriptionHandler().file_formats)}")
         return
 
+    # Determine the computation device
+    exclude_mps = kwargs['subtitle'] or kwargs['annotate']
+    device = get_device(device=kwargs['device'], exclude_mps=exclude_mps)
+
     # Instantiate TranscriptionHandler
     service = transcription.TranscriptionHandler(base_dir=kwargs['output_dir'],
-                                                 device='cuda:0' if kwargs['device'] == 'gpu' else kwargs['device'],
+                                                 device=device,
                                                  model=kwargs['model'],
                                                  file_language=kwargs['lang'], 
                                                  detect_speakers=kwargs['annotate'], 

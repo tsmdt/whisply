@@ -1,14 +1,13 @@
 {
     "files": "path/to/files",
     "output_dir": "./transcriptions",
-    "device": "cpu",
+    "device": "auto",
+    "model": "large-v2",
     "lang": null, 
-    "detect_speakers": false,
-    "hf_token": "Hugging Face Access Token",
-    "translate": true,
-    "txt": true,
-    "srt": false,
-    "webvtt": false,
+    "annotate": false,
+    "hf_token": "Your Hugging Face Access Token",
+    "translate": false,
+    "subtitle": false,
     "sub_length": 10,
     "verbose": true
 }
