@@ -68,7 +68,7 @@ def get_device(device: str = 'auto', exclude_mps: bool = True):
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker detection.')
 @click.option('--translate', default=False, is_flag=True, help='Translate transcription to English.')
 @click.option('--subtitle', default=False, is_flag=True, help='Create .srt and .webvtt subtitles from the transcription.')
-@click.option('--sub_length', default=None, type=int, help="""Subtitle length in words for each subtitle block (Default: 5);
+@click.option('--sub_length', default=5, type=int, help="""Subtitle length in words for each subtitle block (Default: 5);
               e.g. "10" produces subtitles where each individual subtitle block covers exactly 10 words.""")
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
 @click.option('--filetypes', default=False, is_flag=True, help='List supported audio and video file types.')

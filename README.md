@@ -87,7 +87,7 @@ pip install .
 ## Usage
 
 ```markdown
->>> whisply --help
+$ whisply --help
 Usage: whisply [OPTIONS]
 
   WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files

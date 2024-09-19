@@ -80,7 +80,7 @@ class TranscriptionHandler:
         self.translate = translate
         self.hf_token = hf_token
         self.subtitle = subtitle
-        self.sub_length = sub_length if sub_length else 10
+        self.sub_length = sub_length
         self.verbose = verbose
         self.metadata = self._collect_metadata()
         self.filepaths = []
@@ -521,7 +521,17 @@ class TranscriptionHandler:
                         self.filepaths.append(Path(newpath))
         else:
             print(f'The provided file or filetype "{filepath}" is not supported.')
-
+            
+        # Filter out duplicates from previous file conversions
+        to_remove = []
+        for filepath in self.filepaths:
+            converted_filepath = filepath.with_stem(filepath.stem + '_converted').with_suffix('.wav')
+            if converted_filepath in self.filepaths:
+                to_remove.append(filepath)
+        
+        for filepath in to_remove:
+            self.filepaths.remove(filepath)
+   
 
     def detect_language(self, file: Path) -> str:   
         """
