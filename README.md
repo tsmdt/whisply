@@ -21,7 +21,7 @@
 
 * 🚴‍♂️ **Performance**: Depending on your hardware `whisply` will use the fastest `Whisper` implementation:
   * CPU: `fast-whisper` or `whisperX`
-  * GPU (Nvidia CUDA) and MPS (Metal Performance Shaders, Apple M1-M3): `insanley-fast-whisper` or `whisperX`
+  * GPU (Nvidia CUDA) and MPS (Metal Performance Shaders, Apple M1-M3): `insanely-fast-whisper` or `whisperX`
 
 * ✅ **Auto device selection**: When performing transcription or translation tasks without speaker annotation or subtitling, `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) will be selected automatically based on your hardware if you do not provide a device by using the `--device` option.
 
@@ -138,7 +138,7 @@ Out of the box `whisperX` will not provide timestamps for words containing only 
 
 ### Batch processing
 
-Instead of providing a file, folder or URL by using the `--files` option, you can pass a `.list` with a mix of files, folders and URLs for processing. 
+Instead of providing a file, folder or URL by using the `--files` option you can pass a `.list` with a mix of files, folders and URLs for processing. 
 
 Example:
 
