@@ -87,7 +87,6 @@ pip install .
 ## Usage
 
 ```markdown
-$ whisply --help
 Usage: whisply [OPTIONS]
 
   WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files
@@ -102,9 +101,8 @@ Options:
   --model TEXT                 Select the whisper model to use (Default:
                                large-v2). Refers to whisper model size:
                                https://huggingface.co/collections/openai
-  --lang TEXT                  Specifies the language of the file your
-                               providing (en, de, fr ... Default: auto-
-                               detection).
+  --lang TEXT                  Specify the language of the file(s) you provide
+                               (en, de, fr ... Default: auto-detection).
   --annotate                   Enable speaker detection to identify and
                                annotate different speakers. Creates .rttm
                                file.

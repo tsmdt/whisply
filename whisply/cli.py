@@ -62,7 +62,7 @@ def get_device(device: str = 'auto', exclude_mps: bool = True):
 @click.option('--model', type=str, default='large-v2', 
               help='Select the whisper model to use (Default: large-v2). Refers to whisper model size: https://huggingface.co/collections/openai')
 @click.option('--lang', type=str, default=None, 
-              help='Specifies the language of the file(s) you provide (en, de, fr ... Default: auto-detection).')
+              help='Specify the language of the file(s) you provide (en, de, fr ... Default: auto-detection).')
 @click.option('--annotate', default=False, is_flag=True, 
               help='Enable speaker detection to identify and annotate different speakers. Creates .rttm file.')
 @click.option('--hf_token', type=str, default=None, help='HuggingFace Access token required for speaker detection.')
