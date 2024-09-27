@@ -12,16 +12,14 @@
 * [Requirements](#requirements)
 * [Installation](#installation)
 * [Usage](#usage)
-    * [Speaker annotation and diarization](#speaker-detection-and-annotation)
-    * [Using config files](#using-config-files)
+    * [Speaker annotation and diarization](#speaker-annotation-and-diarization)
     * [Batch processing](#batch-processing)
-
 
 ## Features
 
 * 🚴‍♂️ **Performance**: Depending on your hardware `whisply` will use the fastest `Whisper` implementation:
   * CPU: `fast-whisper` or `whisperX`
-  * GPU (Nvidia CUDA) and MPS (Metal Performance Shaders, Apple M1-M3): `insanley-fast-whisper` or `whisperX`
+  * GPU (Nvidia CUDA) and MPS (Metal Performance Shaders, Apple M1-M3): `insanely-fast-whisper` or `whisperX`
 
 * ✅ **Auto device selection**: When performing transcription or translation tasks without speaker annotation or subtitling, `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) will be selected automatically based on your hardware if you do not provide a device by using the `--device` option.
 
@@ -87,7 +85,6 @@ pip install .
 ## Usage
 
 ```markdown
-$ whisply --help
 Usage: whisply [OPTIONS]
 
   WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files
@@ -102,9 +99,8 @@ Options:
   --model TEXT                 Select the whisper model to use (Default:
                                large-v2). Refers to whisper model size:
                                https://huggingface.co/collections/openai
-  --lang TEXT                  Specifies the language of the file your
-                               providing (en, de, fr ... Default: auto-
-                               detection).
+  --lang TEXT                  Specify the language of the file(s) you provide
+                               (en, de, fr ... Default: auto-detection).
   --annotate                   Enable speaker detection to identify and
                                annotate different speakers. Creates .rttm
                                file.
@@ -133,17 +129,22 @@ In order to annotate speakers using `--annotate` you need to provide a valid [Hu
 
 `whisply` uses [whisperX](https://github.com/m-bain/whisperX) for speaker diarization and annotation. Instead of returning chunk-level timestamps like the standard `Whisper` implementation `whisperX` is able to return word-level timestamps as well as annotating speakers word by word, thus returning much more precise annotations.
 
-Out of the box `whisperX` will not provide timestamps for words containing only numbers (e.g. "1.5" or "2024"): `whisply` fixes those instances through timestamp approximation. See some other limitations on the [whisperX GitHub page](https://github.com/m-bain/whisperX).
+Out of the box `whisperX` will not provide timestamps for words containing only numbers (e.g. "1.5" or "2024"): `whisply` fixes those instances through timestamp approximation. Other known limitations of `whisperX` include:
+
+* inaccurate speaker diarization if multiple speakers talk at the same time
+* to provide word-level timestamps and annotations `whisperX` uses language specific alignment models; out of the box `whisperX` supports these languages: `en, fr, de, es, it, ja, zh, nl, uk, pt`.
+
+Refer to the [whisperX GitHub page](https://github.com/m-bain/whisperX) for more information.
 
 
 ### Batch processing
 
-Instead of providing a file, folder or URL by using the `--files` option, you can pass a `.list` with a mix of files, folders and URLs for processing. 
+Instead of providing a file, folder or URL by using the `--files` option you can pass a `.list` with a mix of files, folders and URLs for processing. 
 
 Example:
 
 ```shell
-cat my_files.list
+$ cat my_files.list
 
 video_01.mp4
 video_02.mp4
@@ -157,16 +158,16 @@ You can provide a `.json` config file by using the `--config` option which makes
 
 ```markdown
 {
-    "files": "./files/my_files.list",       # Path to your files
-    "output_dir": "./transcriptions",       # Output folder where transcriptions are saved
-    "device": "auto",                       # AUTO, GPU, MPS or CPU
-    "model": "large-v2",                    # Whisper model to use
-    "lang": null,                           # Null for auto-detection or language codes ("en", "de", ...)
-    "annotate": false,                      # Annotate speakers 
-    "hf_token": "HuggingFace Access Token", # Your HuggingFace Access Token (needed for annotations)
-    "translate": false,                     # Translate to English
-    "subtitle": false,                      # Subtitle file(s)
-    "sub_length": 10,                       # Length of each subtitle block in number of words
-    "verbose": false                        # Print transcription segments while processing 
+    "files": "./files/my_files.list",          # Path to your files
+    "output_dir": "./transcriptions",          # Output folder where transcriptions are saved
+    "device": "auto",                          # AUTO, GPU, MPS or CPU
+    "model": "large-v2",                       # Whisper model to use
+    "lang": null,                              # Null for auto-detection or language codes ("en", "de", ...)
+    "annotate": false,                         # Annotate speakers 
+    "hf_token": "HuggingFace Access Token",    # Your HuggingFace Access Token (needed for annotations)
+    "translate": false,                        # Translate to English
+    "subtitle": false,                         # Subtitle file(s)
+    "sub_length": 10,                          # Length of each subtitle block in number of words
+    "verbose": false                           # Print transcription segments while processing 
 }
 ```
