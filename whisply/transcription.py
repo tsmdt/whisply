@@ -262,7 +262,13 @@ class TranscriptionHandler:
             if self.detect_speakers:
                 diarize_model = whisperx.DiarizationPipeline(use_auth_token=self.hf_token, device=device)
                 diarize_segments = diarize_model(str(filepath))
-                result = whisperx.assign_word_speakers(diarize_segments, result)        
+                result = whisperx.assign_word_speakers(diarize_segments, result)     
+                
+            # Empty CUDA cache
+            if self.device == 'cuda:0':
+                gc.collect()
+                torch.cuda.empty_cache()
+                del model_a
                     
             return result
         
@@ -308,12 +314,6 @@ class TranscriptionHandler:
         result = little_helper.create_text_with_speakers(result)
         
         logging.info(f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec.")
-        
-        # Empty CUDA cache
-        if self.device == 'cuda:0':
-            gc.collect()
-            torch.cuda.empty_cache()
-            del model_a
         
         return {'transcription': result}
 
