@@ -72,7 +72,7 @@ class TranscriptionHandler:
                  verbose=False):
         self.base_dir = Path(base_dir)
         little_helper.ensure_dir(self.base_dir)
-        self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.mkv', '.mov', '.mp4', '.avi', '.mpeg']
+        self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.mkv', '.mov', '.mp4', '.avi', '.mpeg', '.vob']
         self.device = device
         self.file_language = file_language
         self.file_language_provided = file_language is not None
