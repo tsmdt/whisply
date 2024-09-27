@@ -237,12 +237,18 @@ class TranscriptionHandler:
             """
             # Set parameters
             device = 'cuda' if self.device == 'cuda:0' else 'cpu'
-            batch_size = 16  # reduce if low on GPU mem
-            compute_type = "float16" if self.device == 'cuda:0' else 'int8'  # change to "int8" if low on GPU mem (may reduce accuracy)
+            batch_size = 24  if self.device == 'cuda:0' else 16
+            compute_type = "float16" if self.device == 'cuda:0' else 'int8'
             language = language or self.file_language
             
             # Transcribe / translate
-            model = whisperx.load_model("large-v2", device=device, compute_type=compute_type, language=language)
+            # model = whisperx.load_model("large-v2", device=device, compute_type=compute_type, language=language)
+            model = whisperx.load_model(
+                whisper_arch=self.model, 
+                device=device, 
+                compute_type=compute_type, 
+                language=language
+                )
             audio = whisperx.load_audio(str(filepath), sr=16000)
             result = model.transcribe(audio, batch_size=batch_size, task=task)
             
