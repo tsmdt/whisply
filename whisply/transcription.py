@@ -3,6 +3,7 @@ import time
 import torch
 import validators
 import whisperx
+import gc
 
 from pathlib import Path
 from datetime import datetime
@@ -307,6 +308,12 @@ class TranscriptionHandler:
         result = little_helper.create_text_with_speakers(result)
         
         logging.info(f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec.")
+        
+        # Empty CUDA cache
+        if self.device == 'cuda:0':
+            gc.collect()
+            torch.cuda.empty_cache()
+            del model_a
         
         return {'transcription': result}
 
