@@ -75,6 +75,7 @@ class TranscriptionHandler:
         self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.mkv', '.mov', '.mp4', '.avi', '.mpeg']
         self.device = device
         self.file_language = file_language
+        self.file_language_provided = file_language is not None
         self.model = model
         self.detect_speakers = detect_speakers
         self.translate = translate
@@ -628,4 +629,6 @@ class TranscriptionHandler:
                                        detect_speakers=self.detect_speakers)
             
             self.processed_files.append(result)
-            self.file_language = None
+            
+            if not self.file_language_provided:
+                self.file_language = None
