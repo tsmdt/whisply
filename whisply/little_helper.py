@@ -171,7 +171,7 @@ def create_text_with_speakers(transcription_dict: dict) -> dict:
                 
                 # Insert speaker label if a speaker change is detected
                 if speaker != current_speaker:
-                    text += f"[{speaker}] "
+                    text += f"\n[{speaker}] "
                     current_speaker = speaker
                 
                 # Append the word with a space

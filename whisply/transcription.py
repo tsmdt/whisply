@@ -90,9 +90,10 @@ class TranscriptionHandler:
 
 
     def _collect_metadata(self):
-        metadata = {'output_dir': self.base_dir,
+        metadata = {'output_dir': str(self.base_dir),
                     'file_language': self.file_language,
                     'model': self.model,
+                    'device': self.device,
                     'detect_speakers': self.detect_speakers,
                     'translate': self.translate,
                     'subtitle': self.subtitle,
@@ -640,6 +641,8 @@ class TranscriptionHandler:
                                        detect_speakers=self.detect_speakers)
             
             self.processed_files.append(result)
+            
+            print(result)
             
             if not self.file_language_provided:
                 self.file_language = None
