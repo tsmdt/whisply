@@ -642,7 +642,5 @@ class TranscriptionHandler:
             
             self.processed_files.append(result)
             
-            print(result)
-            
             if not self.file_language_provided:
                 self.file_language = None
