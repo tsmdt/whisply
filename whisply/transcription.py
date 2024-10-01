@@ -12,7 +12,6 @@ from transformers import pipeline
 from transformers.utils import is_flash_attn_2_available
 from faster_whisper import WhisperModel
 
-# from whisply import little_helper, download_utils, speaker_detection
 from whisply import little_helper, download_utils
 
 
@@ -73,7 +72,7 @@ class TranscriptionHandler:
                  verbose=False):
         self.base_dir = Path(base_dir)
         little_helper.ensure_dir(self.base_dir)
-        self.file_formats = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.mkv', '.mov', '.mp4', '.avi', '.mpeg', '.vob']
+        self.file_formats = little_helper.return_valid_fileformats()
         self.device = device
         self.file_language = file_language
         self.file_language_provided = file_language is not None
@@ -244,7 +243,6 @@ class TranscriptionHandler:
             language = language or self.file_language
             
             # Transcribe / translate
-            # model = whisperx.load_model("large-v2", device=device, compute_type=compute_type, language=language)
             model = whisperx.load_model(
                 whisper_arch=self.model, 
                 device=device, 

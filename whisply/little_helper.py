@@ -299,6 +299,23 @@ def dict_to_rttm(result: dict) -> dict:
     return rttm_dict
 
 
+def return_valid_fileformats() -> list[str]:
+    return [
+        '.mp3',
+        '.wav',
+        '.m4a',
+        '.aac',
+        '.flac',
+        '.ogg',
+        '.mkv',
+        '.mov',
+        '.mp4',
+        '.avi',
+        '.mpeg',
+        '.vob'
+        ]
+
+
 def check_file_format(filepath: Path) -> Path:
     """
     Checks the format of an audio file and converts it if it doesn't meet specified criteria.

@@ -1,5 +1,7 @@
 import click
 import torch
+import os 
+
 from pathlib import Path
 from whisply import little_helper, transcription
 
@@ -92,13 +94,15 @@ def main(**kwargs):
         kwargs['sub_length'] = config_data.get('sub_length', kwargs['sub_length'])
         kwargs['verbose'] = config_data.get('verbose', kwargs['verbose'])
 
-    # Check if speaker detection is enabled but no HuggingFace token is provided
+    # Check for HuggingFace Access Token if speaker annotation is enabled
     if kwargs['annotate'] and not kwargs['hf_token']:
-        click.echo('→ Please provide a HuggingFace access token (--hf_token) to enable speaker annotation.')
-        return 
+        kwargs['hf_token'] = os.getenv('HF_TOKEN')
+        if not kwargs['hf_token']:
+            click.echo('→ Please provide a HuggingFace access token (--hf_token) to enable speaker annotation.')
+            return 
     
     if kwargs['filetypes']:
-        click.echo(f"{' '.join(transcription.TranscriptionHandler().file_formats)}")
+        click.echo('\n'.join(little_helper.return_valid_fileformats()))
         return
 
     # Determine the computation device
