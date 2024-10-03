@@ -18,9 +18,10 @@ def load_config(config: json) -> dict:
         return json.load(file)
 
 
-def ensure_dir(path) -> None:
-    if not path.exists():
-        path.mkdir(parents=True)
+def ensure_dir(dir: Path) -> None:
+    if not dir.exists():
+        dir.mkdir(parents=True)
+    return dir
         
 
 def set_output_dir(filepath: Path, base_dir: Path) -> None:

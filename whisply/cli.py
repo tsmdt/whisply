@@ -1,9 +1,6 @@
 import click
-import torch
 import os 
-
 from pathlib import Path
-from whisply import little_helper, transcription
 
 
 def get_device(device: str = 'auto', exclude_mps: bool = True):
@@ -15,6 +12,8 @@ def get_device(device: str = 'auto', exclude_mps: bool = True):
     exclude_mps (bool): Flag to exclude MPS device for certain transcription tasks
         that do not allow MPS backend (e.g. whisperX)
     """
+    import torch
+
     if device == 'auto' and exclude_mps:
         if torch.cuda.is_available():
             device = 'cuda:0'
@@ -79,6 +78,8 @@ def main(**kwargs):
     """
     WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
     """
+    from whisply import little_helper, transcription
+
     # Load configuration from config.json if provided
     if kwargs['config']:
         config_data = little_helper.load_config(Path(kwargs['config']))

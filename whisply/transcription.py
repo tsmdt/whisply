@@ -1,16 +1,10 @@
 import logging
 import time
-import torch
 import validators
-import whisperx
-import gc
 
 from pathlib import Path
 from datetime import datetime
 from functools import partial
-from transformers import pipeline
-from transformers.utils import is_flash_attn_2_available
-from faster_whisper import WhisperModel
 
 from whisply import little_helper, download_utils
 
@@ -70,8 +64,7 @@ class TranscriptionHandler:
                  sub_length=None, 
                  translate=False, 
                  verbose=False):
-        self.base_dir = Path(base_dir)
-        little_helper.ensure_dir(self.base_dir)
+        self.base_dir = little_helper.ensure_dir(Path(base_dir))
         self.file_formats = little_helper.return_valid_fileformats()
         self.device = device
         self.file_language = file_language
@@ -109,6 +102,9 @@ class TranscriptionHandler:
         
         This implementation is used when a specific subtitle length (e.g. 5 words per individual subtitle) is needed.
         """
+        import torch
+        import whisperx
+        import gc
         
         def fill_missing_timestamps(segments: list) -> list:
             """
@@ -333,6 +329,10 @@ class TranscriptionHandler:
                 the speaker diarization result. The transcription result includes the recognized text
                 and timestamps if available.
         """
+        import torch
+        from transformers import pipeline
+        from transformers.utils import is_flash_attn_2_available
+
         # Start and time transcription
         logging.info(f"👨‍💻 Transcription started with 🤯 insane-whisper for {filepath.name}")
         t_start = time.time()
@@ -425,6 +425,8 @@ class TranscriptionHandler:
                 the speaker diarization result. The transcription result includes the recognized text
                 and segmented chunks with timestamps if available.
         """
+        from faster_whisper import WhisperModel
+
         # Start and time transcription
         logging.info(f"👨‍💻 Transcription started with 🏃‍♀️‍➡️ faster-whisper for {filepath.name}")
         t_start = time.time()
@@ -549,7 +551,9 @@ class TranscriptionHandler:
     def detect_language(self, file: Path) -> str:   
         """
         Detects the language of the input file.
-        """     
+        """
+        from faster_whisper import WhisperModel
+
         logging.debug(f"Detecting language of file: {file.name}")        
         
         # Define language detection task
