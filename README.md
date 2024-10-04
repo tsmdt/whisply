@@ -125,6 +125,12 @@ Options:
 
 In order to annotate speakers using `--annotate` you need to provide a valid [HuggingFace](https://huggingface.co) access token using the `--hf_token` option. Additionally, you must accept the terms and conditions for both version 3.0 and version 3.1 of the `pyannote` segmentation model. For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
 
+Whithout passing the `--hf_token` option, `whisply` will try to automatically read an existing HuggingFace access token from your shell environment that you have previously exported like this:
+
+```shell
+export HF_TOKEN=hf_abcieo...
+```
+
 #### How speaker annotation works
 
 `whisply` uses [whisperX](https://github.com/m-bain/whisperX) for speaker diarization and annotation. Instead of returning chunk-level timestamps like the standard `Whisper` implementation `whisperX` is able to return word-level timestamps as well as annotating speakers word by word, thus returning much more precise annotations.
