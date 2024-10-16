@@ -99,7 +99,7 @@ def save_rttm_annotations(rttm: str, filepath: Path) -> None:
     print(f'Saved .rttm annotations → {filepath}.')
     
     
-def save_results(result: dict, subtitle: bool = None, detect_speakers: bool = False) -> None:
+def save_results(result: dict, subtitle: bool = None, annotate: bool = False) -> None:
     """
     Write various output formats to disk.
     """
@@ -125,8 +125,8 @@ def save_results(result: dict, subtitle: bool = None, detect_speakers: bool = Fa
             
             logger.info(f"""Saved subtitles to {Path(f"{result['output_filepath']}.srt & .webvtt")}""")
     
-    # If self.detect_speakers write additional .txt with annotated speakers
-    if detect_speakers:
+    # If self.annotate write additional .txt with annotated speakers
+    if annotate:
         for language, transcription in result['transcription'].items():
             save_txt_with_speaker_annotation(
                 annotated_text=transcription['text_with_speaker_annotation'], 
@@ -134,7 +134,7 @@ def save_results(result: dict, subtitle: bool = None, detect_speakers: bool = Fa
                 )
 
     # Write .rttm
-    if detect_speakers:
+    if annotate:
         # Create .rttm annotations
         rttm_dict = dict_to_rttm(result)
         
