@@ -8,17 +8,15 @@
 
 ## Table of contents
 
-- [whisply](#whisply)
-  - [Table of contents](#table-of-contents)
-  - [Features](#features)
-  - [Requirements](#requirements)
-  - [Installation](#installation)
-  - [Usage](#usage)
-    - [Speaker annotation and diarization](#speaker-annotation-and-diarization)
-      - [Requirements](#requirements-1)
-      - [How speaker annotation works](#how-speaker-annotation-works)
-    - [Batch processing](#batch-processing)
-      - [Using config files for batch processing](#using-config-files-for-batch-processing)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Speaker annotation and diarization](#speaker-annotation-and-diarization)
+    - [Requirements](#requirements-1)
+    - [How speaker annotation works](#how-speaker-annotation-works)
+  - [Batch processing](#batch-processing)
+    - [Using config files for batch processing](#using-config-files-for-batch-processing)
 
 ## Features
 
@@ -170,7 +168,7 @@ You can provide a `.json` config file by using the `--config` option which makes
     "files": "./files/my_files.list",          # Path to your files
     "output_dir": "./transcriptions",          # Output folder where transcriptions are saved
     "device": "auto",                          # AUTO, GPU, MPS or CPU
-    "model": "large-v2",                       # Whisper model to use
+    "model": "large-v3-turbo",                 # Whisper model to use
     "lang": null,                              # Null for auto-detection or language codes ("en", "de", ...)
     "annotate": false,                         # Annotate speakers 
     "hf_token": "HuggingFace Access Token",    # Your HuggingFace Access Token (needed for annotations)
