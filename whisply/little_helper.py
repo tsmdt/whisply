@@ -172,10 +172,11 @@ def create_text_with_speakers(transcription_dict: dict) -> dict:
             for word_info in words:
                 speaker = word_info.get('speaker')
                 word = word_info.get('word', '')
+                start_timestamp = format_time(word_info.get('start'), delimiter='.')
                 
                 # Insert speaker label if a speaker change is detected
                 if speaker != current_speaker:
-                    text += f"\n[{speaker}] "
+                    text += f"\n[{start_timestamp}] [{speaker}] "
                     current_speaker = speaker
                 
                 # Append the word with a space
