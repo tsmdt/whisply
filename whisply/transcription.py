@@ -602,7 +602,7 @@ class TranscriptionHandler:
         def run_language_detection():
             lang_detection_model = WhisperModel(
                 models.set_supported_model(self.model_provided, implementation='faster-whisper'), 
-                device='cpu' if self.device == 'mps' else self.device, 
+                device='cpu' if self.device in ['mps', 'cpu'] else 'cuda', 
                 compute_type='int8' if self.device in ['mps', 'cpu'] else 'float16'
                 )
             _, info = lang_detection_model.transcribe(str(file), beam_size=5)
