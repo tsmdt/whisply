@@ -659,7 +659,7 @@ class TranscriptionHandler:
             # If subtitles or speaker annotation use whisperX
             if self.subtitle or self.annotate:
                 self.model = models.set_supported_model(self.model_provided, implementation='whisperx')
-                print(f'[bold]→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
+                print(f'[bold]→ Using {self.device.upper()} and whisper🆇 with model "{self.model}"')
                 result_data = self.transcribe_with_whisperx(filepath)
 
             # Else use faster_whisper / insanely_fast_whisper depending on self.device

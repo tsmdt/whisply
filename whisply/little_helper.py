@@ -73,36 +73,36 @@ def normalize_filepath(filepath: str) -> Path:
 def save_json(result: dict, filepath: Path) -> None:    
     with open(filepath, 'w', encoding='utf-8') as fout:
         json.dump(result, fout, indent=4)
-    print(f'[bold]→ Saved .json: {filepath}.')
-    logger.info(f"Saved .json to {filepath}.")
+    print(f'[bold]→ Saved .json: {filepath}')
+    logger.info(f"Saved .json to {filepath}")
 
 
 def save_txt(transcription: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(transcription['text'].strip())
-    print(f'[bold]→ Saved .txt: {filepath}.')
-    logger.info(f"Saved .txt transcript to {filepath}.")
+    print(f'[bold]→ Saved .txt: {filepath}')
+    logger.info(f"Saved .txt transcript to {filepath}")
     
 
 def save_txt_with_speaker_annotation(annotated_text: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(annotated_text)
-    print(f'[bold]→ Saved .txt with speaker annotation: {filepath}.')
-    logger.info(f'Saved .txt transcription with speaker annotation → {filepath}.')
+    print(f'[bold]→ Saved .txt with speaker annotation: {filepath}')
+    logger.info(f'Saved .txt transcription with speaker annotation → {filepath}')
     
     
 def save_subtitles(text: str, type: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as subtitle_file:
         subtitle_file.write(text)
-    print(f'[bold]→ Saved .{type} subtitles: {filepath}.')
-    logger.info(f'Saved .{type} subtitles → {filepath}.')
+    print(f'[bold]→ Saved .{type} subtitles: {filepath}')
+    logger.info(f'Saved .{type} subtitles → {filepath}')
     
     
 def save_rttm_annotations(rttm: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as rttm_file:
         rttm_file.write(rttm)
-    print(f'[bold]→ Saved .rttm annotations: {filepath}.')
-    logger.info(f'Saved .rttm annotations → {filepath}.')
+    print(f'[bold]→ Saved .rttm annotations: {filepath}')
+    logger.info(f'Saved .rttm annotations → {filepath}')
     
     
 def save_results(result: dict, subtitle: bool = None, annotate: bool = False) -> None:
