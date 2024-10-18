@@ -39,7 +39,7 @@ setup(
         "License :: OSI Approved :: Apache-2.0 license",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.11',
+    python_requires='>=3.10',
     entry_points={
         'console_scripts': [
             'whisply=whisply.cli:main',
