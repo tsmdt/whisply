@@ -5,6 +5,7 @@ import ffmpeg
 
 from pathlib import Path
 from typing import Callable, Any
+from rich import print
 from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
 
 
@@ -72,31 +73,36 @@ def normalize_filepath(filepath: str) -> Path:
 def save_json(result: dict, filepath: Path) -> None:    
     with open(filepath, 'w', encoding='utf-8') as fout:
         json.dump(result, fout, indent=4)
-    print(f'Saved .json → {filepath}.')
+    print(f'[bold]→ Saved .json: {filepath}.')
+    logger.info(f"Saved .json to {filepath}.")
 
 
 def save_txt(transcription: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(transcription['text'].strip())
-    print(f'Saved .txt transcription → {filepath}.')
+    print(f'[bold]→ Saved .txt: {filepath}.')
+    logger.info(f"Saved .txt transcript to {filepath}.")
     
 
 def save_txt_with_speaker_annotation(annotated_text: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(annotated_text)
-    print(f'Saved .txt transcription with speaker annotation → {filepath}.')
+    print(f'[bold]→ Saved .txt with speaker annotation: {filepath}.')
+    logger.info(f'Saved .txt transcription with speaker annotation → {filepath}.')
     
     
 def save_subtitles(text: str, type: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as subtitle_file:
         subtitle_file.write(text)
-    print(f'Saved .{type} subtitles → {filepath}.')
+    print(f'[bold]→ Saved .{type} subtitles: {filepath}.')
+    logger.info(f'Saved .{type} subtitles → {filepath}.')
     
     
 def save_rttm_annotations(rttm: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as rttm_file:
         rttm_file.write(rttm)
-    print(f'Saved .rttm annotations → {filepath}.')
+    print(f'[bold]→ Saved .rttm annotations: {filepath}.')
+    logger.info(f'Saved .rttm annotations → {filepath}.')
     
     
 def save_results(result: dict, subtitle: bool = None, annotate: bool = False) -> None:
@@ -105,12 +111,10 @@ def save_results(result: dict, subtitle: bool = None, annotate: bool = False) ->
     """
     # Write .json
     save_json(result, filepath=Path(f"{result['output_filepath']}.json"))
-    logger.info(f"""Saved .json to {Path(f"{result['output_filepath']}.json")}""")
     
     # Write .txt
     for language, transcription in result['transcription'].items():
         save_txt(transcription, filepath=Path(f"{result['output_filepath']}_{language}.txt"))
-        logger.info(f"""Saved .txt transcript to {Path(f"{result['output_filepath']}.txt")}""")
     
     # Write subtitles (.srt and .webvtt)
     if subtitle:
@@ -119,11 +123,10 @@ def save_results(result: dict, subtitle: bool = None, annotate: bool = False) ->
             srt_text = create_subtitles(transcription, type='srt')
             save_subtitles(srt_text, type='srt', filepath=Path(f"{result['output_filepath']}_{language}.srt"))
             
-            # .webvtt subtitles
-            webvtt_text = create_subtitles(transcription, type='webvtt')
-            save_subtitles(webvtt_text, type='webvtt', filepath=Path(f"{result['output_filepath']}_{language}.webvtt"))
-            
-            logger.info(f"""Saved subtitles to {Path(f"{result['output_filepath']}.srt & .webvtt")}""")
+            # .webvtt / .vtt subtitles
+            for type in ['webvtt', 'vtt']:
+                webvtt_text = create_subtitles(transcription, type=type, result=result)
+                save_subtitles(webvtt_text, type=type, filepath=Path(f"{result['output_filepath']}_{language}.{type}"))
     
     # If self.annotate write additional .txt with annotated speakers
     if annotate:
@@ -195,7 +198,7 @@ def format_time(seconds, delimiter=',') -> str:
     return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
 
 
-def create_subtitles(transcription_dict: dict, type: str = 'srt') -> str:
+def create_subtitles(transcription_dict: dict, type: str = 'srt', result: dict = None) -> str:
     """
     Converts a transcription dictionary into subtitle format (.srt or .webvtt).
 
@@ -223,12 +226,16 @@ def create_subtitles(transcription_dict: dict, type: str = 'srt') -> str:
             subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
         
         # Create .webvtt subtitles    
-        elif type == 'webvtt':
+        elif type in ['webvtt', 'vtt']:
             start_time_str = format_time(start_time, delimiter='.')
             end_time_str = format_time(end_time, delimiter='.')
 
             if seg_id == 0:
-                subtitle_text += 'WEBVTT\n\n'
+                subtitle_text += f"WEBVTT {Path(result['output_filepath']).stem}\n\n"
+                
+                if type == 'vtt':
+                    subtitle_text += 'NOTE transcribed with whisply\n\n'
+                    subtitle_text += f"NOTE media: {Path(result['input_filepath']).absolute()}\n\n"
                 
             seg_id += 1
             subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
@@ -348,7 +355,7 @@ def check_file_format(filepath: Path) -> Path:
             audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
             
             if not audio_streams:
-                print(f"No audio stream found for {filepath}. Please check if the file you have provided contains audio content.")
+                print(f"[bold]→ No audio stream found for {filepath}. Please check if the file you have provided contains audio content.")
                 return False
             
             audio_stream = audio_streams[0]
@@ -363,20 +370,20 @@ def check_file_format(filepath: Path) -> Path:
                     
                     # Convert file and show progress bar
                     run_with_progress(
-                        description=f"[orchid]Converting file to .wav → {filepath.name}", 
+                        description=f"[orchid]→ Converting file to .wav: {filepath.name}", 
                         task=lambda: convert_file_format(old_filepath=filepath, new_filepath=new_filepath)
                         )
                 
                     return Path(new_filepath)
                 
                 except Exception as e:
-                    raise RuntimeError(f"An error occurred while converting {filepath}: {e}")
+                    raise RuntimeError(f"[bold]→ An error occurred while converting {filepath}: {e}")
             else:
                 return filepath
             
         except ffmpeg.Error as e:
-            print(f"Error running ffprobe: {e}")
-            print(f"You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
+            print(f"[bold]→ Error running ffprobe: {e}")
+            print(f"[bold]→ You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
     
 
 def convert_file_format(old_filepath, new_filepath):

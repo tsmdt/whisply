@@ -8,12 +8,17 @@
 
 ## Table of contents
 
-* [Features](#features)
-* [Requirements](#requirements)
-* [Installation](#installation)
-* [Usage](#usage)
-    * [Speaker annotation and diarization](#speaker-annotation-and-diarization)
-    * [Batch processing](#batch-processing)
+- [whisply](#whisply)
+  - [Table of contents](#table-of-contents)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Speaker annotation and diarization](#speaker-annotation-and-diarization)
+      - [Requirements](#requirements-1)
+      - [How speaker annotation works](#how-speaker-annotation-works)
+    - [Batch processing](#batch-processing)
+      - [Using config files for batch processing](#using-config-files-for-batch-processing)
 
 ## Features
 
@@ -29,7 +34,7 @@
 
 * 🧺 **Batch processing**: `whisply` can process single files, whole folders, URLs or a combination of all by combining paths in a `.list` document. See the [Batch processing](#batch-processing) section for more information.
 
-* ⚙️ **Supported output formats**: `.json` `.txt` `.txt (annotated)` `.srt` `.webvtt` `.rttm`
+* ⚙️ **Supported output formats**: `.json` `.txt` `.txt (annotated)` `.srt` `.webvtt` `.vtt` `.rttm`
 
 ## Requirements
 
@@ -91,32 +96,30 @@ Usage: whisply [OPTIONS]
   with OpenAI's Whisper ... fast!
 
 Options:
-  --files PATH                 Path to file, folder, URL or .list to process.
-  --output_dir DIRECTORY       Folder where transcripts should be saved.
-                               Default: "./transcriptions".
-  --device [auto|cpu|gpu|mps]  Select the computation device: auto (default),
-                               CPU, GPU (NVIDIA CUDA), or MPS (Mac M1-M3).
-  --model TEXT                 Select the whisper model to use (Default:
-                               large-v2). Refers to whisper model size:
-                               https://huggingface.co/collections/openai
-  --lang TEXT                  Specify the language of the file(s) you provide
-                               (en, de, fr ... Default: auto-detection).
-  --annotate                   Enable speaker detection to identify and
-                               annotate different speakers. Creates .rttm
-                               file.
-  --hf_token TEXT              HuggingFace Access token required for speaker
-                               detection.
-  --translate                  Translate transcription to English.
-  --subtitle                   Create .srt and .webvtt subtitles from the
-                               transcription.
-  --sub_length INTEGER         Subtitle length in words for each subtitle
-                               block (Default: 5); e.g. "10" produces
-                               subtitles where each individual subtitle block
-                               covers exactly 10 words.
-  --config FILE                Path to configuration file.
-  --filetypes                  List supported audio and video file types.
-  --verbose                    Print text chunks during transcription.
-  --help                       Show this message and exit.
+  -f, --files PATH                Path to file, folder, URL or .list to
+                                  process.
+  -o, --output_dir DIRECTORY      Folder where transcripts should be saved.
+                                  Default: ./transcriptions
+  -d, --device [auto|cpu|gpu|mps]
+                                  Select the computation device: auto
+                                  (default), CPU, GPU (NVIDIA CUDA), or MPS
+                                  (Mac M1-M3).
+  -m, --model TEXT                Whisper model to use (Default: "large-v2").
+  -l, --lang TEXT                 Language of provided file(s) ("en", "de")
+                                  (Default: auto-detection).
+  -a, --annotate                  Enable speaker annotation. Creates .rttm
+  -hf, --hf_token TEXT            HuggingFace Access token required for
+                                  speaker annotation.
+  -t, --translate                 Translate transcription to English.
+  -s, --subtitle                  Create .srt and .webvtt subtitles.
+  --sub_length INTEGER            Subtitle block length in words (Default: 5);
+                                  e.g. "10" produces subtitles with subtitle
+                                  blocks of exactly 10 words.
+  --config FILE                   Path to configuration file.
+  --list_filetypes                List supported audio and video file types.
+  --list_models                   List available models.
+  --verbose                       Print text chunks during transcription.
+  --help                          Show this message and exit.
   ```
 
 ### Speaker annotation and diarization

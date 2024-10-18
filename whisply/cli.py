@@ -1,6 +1,7 @@
 import click
 import os 
 from pathlib import Path
+from rich import print
 
 
 def get_device(device: str = 'auto', exclude_mps: bool = True):
@@ -22,8 +23,8 @@ def get_device(device: str = 'auto', exclude_mps: bool = True):
     elif device == 'auto':
         if torch.cuda.is_available():
             device = 'cuda:0'
-        # elif torch.backends.mps.is_available():0
-        #     device = 'mps'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
         else:
             device = 'cpu'
     elif device == 'gpu':
@@ -31,11 +32,11 @@ def get_device(device: str = 'auto', exclude_mps: bool = True):
             device = 'cuda:0'
         else:
             device = 'cpu'
-    # elif device == 'mps' and not exclude_mps:
-    #     if torch.backends.mps.is_available():
-    #         device = 'mps'
-    #     else:
-    #         device = 'cpu'
+    elif device == 'mps' and not exclude_mps:
+        if torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
     elif device == 'cpu':
         device = 'cpu'
     else:
@@ -47,14 +48,12 @@ def get_device(device: str = 'auto', exclude_mps: bool = True):
 @click.option('--files', '-f', type=click.Path(file_okay=True, dir_okay=True), help='Path to file, folder, URL or .list to process.')
 @click.option('--output_dir', '-o', default='./transcriptions', type=click.Path(file_okay=False, dir_okay=True), 
               help='Folder where transcripts should be saved. Default: ./transcriptions')
-@click.option('--device', '-d', default='auto', type=click.Choice(['auto', 'cpu', 'gpu'], case_sensitive=False), 
+@click.option('--device', '-d', default='auto', type=click.Choice(['auto', 'cpu', 'gpu', 'mps'], case_sensitive=False), 
               help='Select the computation device: auto (default), CPU, GPU (NVIDIA CUDA), or MPS (Mac M1-M3).')
 @click.option('--model', '-m', type=str, default='large-v2', 
-              help='Whisper model to use (Default: "large-v2"). https://huggingface.co/collections/openai')
+              help='Whisper model to use (Default: "large-v2").')
 @click.option('--lang', '-l', type=str, default=None, 
               help='Language of provided file(s) ("en", "de") (Default: auto-detection).')
-# @click.option('--annotate', '-a', default=None, type=click.Choice(['default', 'gat2']), 
-#               help='Enable speaker annotation. Use "gat2" for Gat 2 guideline annotations. Creates .rttm')
 @click.option('--annotate', '-a', default=False, is_flag=True, help='Enable speaker annotation. Creates .rttm')
 @click.option('--hf_token', '-hf', type=str, default=None, help='HuggingFace Access token required for speaker annotation.')
 @click.option('--translate', '-t', default=False, is_flag=True, help='Translate transcription to English.')
@@ -62,13 +61,14 @@ def get_device(device: str = 'auto', exclude_mps: bool = True):
 @click.option('--sub_length', default=5, type=int, help="""Subtitle block length in words (Default: 5);
               e.g. "10" produces subtitles with subtitle blocks of exactly 10 words.""")
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to configuration file.')
-@click.option('--filetypes', default=False, is_flag=True, help='List supported audio and video file types.')
+@click.option('--list_filetypes', default=False, is_flag=True, help='List supported audio and video file types.')
+@click.option('--list_models', default=False, is_flag=True, help='List available models.')
 @click.option('--verbose', default=False, is_flag=True, help='Print text chunks during transcription.')
 def main(**kwargs):
     """
     WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
     """
-    from whisply import little_helper, transcription
+    from whisply import little_helper, transcription, models
 
     # Load configuration from config.json if provided
     if kwargs['config']:
@@ -85,20 +85,42 @@ def main(**kwargs):
         kwargs['sub_length'] = config_data.get('sub_length', kwargs['sub_length'])
         kwargs['verbose'] = config_data.get('verbose', kwargs['verbose'])
 
+    # Print supported filetypes 
+    if kwargs['list_filetypes']:
+        supported_filetypes = "Supported filetypes: "
+        supported_filetypes += ' '.join(little_helper.return_valid_fileformats())
+        print(f"[bold]{supported_filetypes}")
+        return
+    
+    # Print available models
+    if kwargs['list_models']:
+        available_models = "Available models: "
+        available_models += ', '.join(models.WHISPER_MODELS.keys())
+        print(f"[bold]{available_models}")
+        return
+
+    # Check if provided model is available
+    if not models.ensure_model(kwargs['model']):
+        msg = f"""[bold]→ Model "{kwargs['model']}" is not available.\n→ Available models: """
+        msg += ', '.join(models.WHISPER_MODELS.keys())
+        print(f"[bold]{msg}")
+        return
+
     # Check for HuggingFace Access Token if speaker annotation is enabled
     if kwargs['annotate'] and not kwargs['hf_token']:
         kwargs['hf_token'] = os.getenv('HF_TOKEN')
         if not kwargs['hf_token']:
-            click.echo('→ Please provide a HuggingFace access token (--hf_token) to enable speaker annotation.')
+            print('[bold]→ Please provide a HuggingFace access token (--hf_token / -hf) to enable speaker annotation.')
             return 
-
-    if kwargs['filetypes']:
-        click.echo('\n'.join(little_helper.return_valid_fileformats()))
-        return
 
     # Determine the computation device
     exclude_mps = kwargs['subtitle'] or kwargs['annotate']
     device = get_device(device=kwargs['device'], exclude_mps=exclude_mps)
+    
+    # Check for provided files
+    if not kwargs['files']:
+        print('[bold]→ Please provide file(s), folder(s) and or URLs for processing.')
+        return
 
     # Instantiate TranscriptionHandler
     service = transcription.TranscriptionHandler(base_dir=kwargs['output_dir'],
