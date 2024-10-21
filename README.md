@@ -37,9 +37,35 @@
 ## Requirements
 
 * [FFmpeg](https://ffmpeg.org/)
-* python3.11
-* **GPU processing** requires Nvidia GPU (CUDA) or Apple Metal Performance Shaders (MPS) (Mac M1-M3)
-* **Speaker annotation** requires a [HuggingFace Access Token](https://huggingface.co/docs/hub/security-tokens)
+* \>= Python3.10
+* GPU  processing requires:
+  * Nvidia GPU (CUDA: cuBLAS and cuDNN 8 for CUDA 12) 
+  * Apple Metal Performance Shaders (MPS) (Mac M1-M3)
+* Speaker annotation requires a [HuggingFace Access Token](https://huggingface.co/docs/hub/security-tokens)
+
+<details>
+<summary><b>GPU Fix</b> for <i>Could not load library libcudnn_ops_infer.so.8.</i> (<b>click to expand</b>)</summary>
+<br>If you use <b>whisply</b> on a Linux system with a Nivida GPU and get this error:<br><br>
+
+```shell
+"Could not load library libcudnn_ops_infer.so.8. Error: libcudnn_ops_infer.so.8: cannot open shared object file: No such file or directory"
+```
+
+Run the following line in your CLI:
+
+```shell
+export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'`
+```
+
+Add this line to your Python environment to make it permanent:
+
+```shell
+echo "export LD_LIBRARY_PATH=\`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + \":\" + os.path.dirname(nvidia.cudnn.lib.__file__))'\`" >> path/to/your/python/env
+```
+
+For more information please refer to the <a href="https://github.com/SYSTRAN/faster-whisper" target="_blank">faster-whisper</a> GitHub page.
+
+</details>
 
 ## Installation
 
@@ -87,37 +113,30 @@ pip install .
 
 ## Usage
 
-```markdown
-Usage: whisply [OPTIONS]
+```shell
+ Usage: whisply [OPTIONS]
 
-  WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files
-  with OpenAI's Whisper ... fast!
+ WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
 
-Options:
-  -f, --files PATH                Path to file, folder, URL or .list to
-                                  process.
-  -o, --output_dir DIRECTORY      Folder where transcripts should be saved.
-                                  Default: ./transcriptions
-  -d, --device [auto|cpu|gpu|mps]
-                                  Select the computation device: auto
-                                  (default), CPU, GPU (NVIDIA CUDA), or MPS
-                                  (Mac M1-M3).
-  -m, --model TEXT                Whisper model to use (Default: "large-v2").
-  -l, --lang TEXT                 Language of provided file(s) ("en", "de")
-                                  (Default: auto-detection).
-  -a, --annotate                  Enable speaker annotation. Creates .rttm
-  -hf, --hf_token TEXT            HuggingFace Access token required for
-                                  speaker annotation.
-  -t, --translate                 Translate transcription to English.
-  -s, --subtitle                  Create .srt and .webvtt subtitles.
-  --sub_length INTEGER            Subtitle block length in words (Default: 5);
-                                  e.g. "10" produces subtitles with subtitle
-                                  blocks of exactly 10 words.
-  --config FILE                   Path to configuration file.
-  --list_filetypes                List supported audio and video file types.
-  --list_models                   List available models.
-  --verbose                       Print text chunks during transcription.
-  --help                          Show this message and exit.
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --files               -f       TEXT                Path to file, folder, URL or .list to process. [default: None]                                          │
+│ --output_dir          -o       DIRECTORY           Folder where transcripts should be saved. [default: transcriptions]                                     │
+│ --device              -d       [auto|cpu|gpu|mps]  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M3). [default: auto]                   │
+│ --model               -m       TEXT                Whisper model to use (List models via --list_models). [default: large-v2]                               │
+│ --lang                -l       TEXT                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]                    │
+│ --annotate            -a                           Enable speaker annotation (Saves .rttm).                                                                │
+│ --hf_token            -hf      TEXT                HuggingFace Access token required for speaker annotation. [default: None]                               │
+│ --translate           -t                           Translate transcription to English.                                                                     │
+│ --subtitle            -s                           Create subtitles (Saves .srt, .vtt and .webvtt).                                                        │
+│ --sub_length                   INTEGER             Subtitle segment length in words [default: 5]                                                           │
+│ --verbose             -v                           Print text chunks during transcription.                                                                 │
+│ --config                       PATH                Path to configuration file. [default: None]                                                             │
+│ --list_filetypes                                   List supported audio and video file types.                                                              │
+│ --list_models                                      List available models.                                                                                  │
+│ --install-completion                               Install completion for the current shell.                                                               │
+│ --show-completion                                  Show completion for the current shell, to copy it or customize the installation.                        │
+│ --help                                             Show this message and exit.                                                                             │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
   ```
 
 ### Speaker annotation and diarization
@@ -125,12 +144,6 @@ Options:
 #### Requirements
 
 In order to annotate speakers using `--annotate` you need to provide a valid [HuggingFace](https://huggingface.co) access token using the `--hf_token` option. Additionally, you must accept the terms and conditions for both version 3.0 and version 3.1 of the `pyannote` segmentation model. For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
-
-Whithout passing the `--hf_token` option, `whisply` will try to automatically read an existing HuggingFace access token from your shell environment that you have previously exported like this:
-
-```shell
-export HF_TOKEN=hf_abcieo...
-```
 
 #### How speaker annotation works
 
