@@ -59,7 +59,7 @@ def get_device(device: DeviceChoice = DeviceChoice.AUTO, exclude_mps: bool = Tru
 @app.command(no_args_is_help=True)
 def main(
     files: Optional[List[str]] = typer.Option(
-        ...,
+        None,
         "--files",
         "-f",
         help="Path to file, folder, URL or .list to process.",
