@@ -637,7 +637,9 @@ class TranscriptionHandler:
         logging.info(f"Provided parameters for processing: {self.metadata}")
 
         # Get filepaths
-        self.get_filepaths(files)
+        for file in files:
+            self.get_filepaths(file)
+            
         logging.info(f"Processing files: {self.filepaths}")
 
         self.processed_files = []
@@ -685,9 +687,11 @@ class TranscriptionHandler:
             }
 
             # Save results
-            little_helper.save_results(result=result, 
-                                       subtitle=self.subtitle,
-                                       annotate=self.annotate)
+            little_helper.save_results(
+                result=result, 
+                subtitle=self.subtitle,
+                annotate=self.annotate
+                )
             
             self.processed_files.append(result)
             
