@@ -14,7 +14,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/tsmdt/whisply",
     install_requires=[
-        'click==8.1.7',
+        'typer==0.12.5',
         'faster-whisper==1.0.1',
         'ffmpeg-python==0.2.0',
         'optimum==1.19.1',
@@ -42,7 +42,7 @@ setup(
     python_requires='>=3.10',
     entry_points={
         'console_scripts': [
-            'whisply=whisply.cli:main',
+            'whisply=whisply.cli:run',
         ],
     },
 )
