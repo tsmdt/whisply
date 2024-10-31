@@ -1,5 +1,7 @@
 # whisply
 
+[![PyPI version](https://badge.fury.io/py/whisply.svg)](https://badge.fury.io/py/whisply)
+
 <img src="https://github.com/user-attachments/assets/3a15509b-b60e-4581-af87-ecaa8e5089a3" width="25%">
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
@@ -109,6 +111,11 @@ source venv/bin/activate
 
 ```python
 pip install .
+```
+
+or 
+```python
+pip install whisply
 ```
 
 ## Usage
