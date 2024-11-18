@@ -512,8 +512,9 @@ class TranscriptionHandler:
                 if self.verbose:
                     print(result['transcriptions']['en']['text'])
                     
-            # Create full transcription with speaker annotation
-            result = little_helper.create_text_with_speakers(result)
+            if self.annotate:
+                # Create full transcription with speaker annotation
+                result = little_helper.create_text_with_speakers(result)
 
         except ValueError as e:
             print(f'[bold]{e}')

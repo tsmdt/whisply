@@ -22,19 +22,21 @@
 
 ## Features
 
-* 🚴‍♂️ **Performance**: Depending on your hardware `whisply` will use the fastest `Whisper` implementation:
-  * CPU: `fast-whisper` or `whisperX`
-  * GPU (Nvidia CUDA) and MPS (Metal Performance Shaders, Apple M1-M3): `insanely-fast-whisper` or `whisperX`
+* 🚴‍♂️ **Performance**: `whisply` selects the fastest Whisper implementation based on your hardware:
+  * CPU/GPU (Nvidia CUDA): `fast-whisper` or `whisperX`
+  * MPS (Apple M1-M4): `insanely-fast-whisper`
 
-* ✅ **Auto device selection**: When performing transcription or translation tasks without speaker annotation or subtitling, `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) will be selected automatically based on your hardware if you do not provide a device by using the `--device` option.
+* ⏩ **large-v3-turbo Ready**: Support for [whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) on all devices. **Note**: Subtitling and annotations on CPU/GPU use `whisperX` for accurate timestamps, but `whisper-large-v3-turbo` isn’t currently available for `whisperX`. 
 
-* 🗣️ **Word-level annotations**: If you choose to `--subtitle` or `--annotate`, `whisperX` will be used, which supports word-level segmentation and speaker annotations. Depending on your hardware, `whisperX` can run either on CPU or Nvidia GPU (but not on Apple MPS). Out of the box `whisperX` will not provide timestamps for words containing only numbers (e.g. "1.5" or "2024"): `whisply` fixes those instances through timestamp approximation.
+* ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) for transcription and translation unless a specific `--device` option is passed.
 
-* 💬 **Subtitles**: Generating subtitles is customizable. You can specify the number of words per subtitle block (e.g., choosing "5" will generate `.srt` and `.webvtt` files where each subtitle block exactly 5 words per segment with the corresponding timestamps).
+* 🗣️ **Word-level Annotations**: Enabling `--subtitle` or `--annotate` uses `whisperX` or `insanely-fast-whisper` for word segmentation and speaker annotations. `whisply` approximates missing timestamps for numeric words.
 
-* 🧺 **Batch processing**: `whisply` can process single files, whole folders, URLs or a combination of all by combining paths in a `.list` document. See the [Batch processing](#batch-processing) section for more information.
+* 💬 **Customizable Subtitles**: Specify words per subtitle block (e.g., "5") to generate `.srt` and `.webvtt` files with fixed word counts and timestamps.
 
-* ⚙️ **Supported output formats**: `.json` `.txt` `.txt (annotated)` `.srt` `.webvtt` `.vtt` `.rttm`
+* 🧺 **Batch Processing**: Handle single files, folders, URLs, or lists via `.list` documents. See the [Batch processing](#batch-processing) section for details.
+
+* ⚙️ **Export Formats**: Supports `.json`, `.txt`, `.txt (annotated)`, `.srt`, `.webvtt`, `.vtt`, and `.rttm`.
 
 ## Requirements
 
@@ -98,7 +100,7 @@ cd whisply
 **3. Create a Python virtual environment**
 
 ```python
-python3.11 -m venv venv
+python3 -m venv venv
 ```
 
 **4. Activate the Python virtual environment**
@@ -121,28 +123,30 @@ pip install whisply
 ## Usage
 
 ```shell
+
  Usage: whisply [OPTIONS]
 
  WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --files               -f       TEXT                Path to file, folder, URL or .list to process. [default: None]                                          │
-│ --output_dir          -o       DIRECTORY           Folder where transcripts should be saved. [default: transcriptions]                                     │
-│ --device              -d       [auto|cpu|gpu|mps]  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M3). [default: auto]                   │
-│ --model               -m       TEXT                Whisper model to use (List models via --list_models). [default: large-v2]                               │
-│ --lang                -l       TEXT                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]                    │
-│ --annotate            -a                           Enable speaker annotation (Saves .rttm).                                                                │
-│ --hf_token            -hf      TEXT                HuggingFace Access token required for speaker annotation. [default: None]                               │
-│ --translate           -t                           Translate transcription to English.                                                                     │
-│ --subtitle            -s                           Create subtitles (Saves .srt, .vtt and .webvtt).                                                        │
-│ --sub_length                   INTEGER             Subtitle segment length in words [default: 5]                                                           │
-│ --verbose             -v                           Print text chunks during transcription.                                                                 │
-│ --config                       PATH                Path to configuration file. [default: None]                                                             │
-│ --list_filetypes                                   List supported audio and video file types.                                                              │
-│ --list_models                                      List available models.                                                                                  │
-│ --install-completion                               Install completion for the current shell.                                                               │
-│ --show-completion                                  Show completion for the current shell, to copy it or customize the installation.                        │
-│ --help                                             Show this message and exit.                                                                             │
+│ --files               -f       TEXT                                Path to file, folder, URL or .list to process. [default: None]                          │
+│ --output_dir          -o       DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                     │
+│ --device              -d       [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M3). [default: auto]   │
+│ --model               -m       TEXT                                Whisper model to use (List models via --list_models). [default: large-v2]               │
+│ --lang                -l       TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]    │
+│ --annotate            -a                                           Enable speaker annotation (Saves .rttm).                                                │
+│ --hf_token            -hf      TEXT                                HuggingFace Access token required for speaker annotation. [default: None]               │
+│ --translate           -t                                           Translate transcription to English.                                                     │
+│ --subtitle            -s                                           Create subtitles (Saves .srt, .vtt and .webvtt).                                        │
+│ --sub_length                   INTEGER                             Subtitle segment length in words. [default: 5]                                          │
+│ --export              -e       [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                                │
+│ --verbose             -v                                           Print text chunks during transcription.                                                 │
+│ --config                       PATH                                Path to configuration file. [default: None]                                             │
+│ --list_filetypes                                                   List supported audio and video file types.                                              │
+│ --list_models                                                      List available models.                                                                  │
+│ --install-completion                                               Install completion for the current shell.                                               │
+│ --show-completion                                                  Show completion for the current shell, to copy it or customize the installation.        │
+│ --help                                                             Show this message and exit.                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
   ```
 
@@ -195,6 +199,7 @@ You can provide a `.json` config file by using the `--config` option which makes
     "translate": false,                        # Translate to English
     "subtitle": false,                         # Subtitle file(s)
     "sub_length": 10,                          # Length of each subtitle block in number of words
+    "export": "txt",                           # Export .txts only
     "verbose": false                           # Print transcription segments while processing 
 }
 ```

@@ -140,7 +140,12 @@ def save_results(
                     )
 
     # Write annotated .txt with speaker annotations
-    if 'txt' in export_formats and transcription['text_with_speaker_annotation']:
+    has_speaker_annotation = False
+    for _, transcription in transcription_items:
+        if 'text_with_speaker_annotation' in transcription:
+            has_speaker_annotation = True
+    
+    if 'txt' in export_formats and has_speaker_annotation:
         for language, transcription in transcription_items:
             save_txt_with_speaker_annotation(
                 annotated_text=transcription['text_with_speaker_annotation'],
@@ -157,53 +162,6 @@ def save_results(
                 rttm=rttm_annotation,
                 filepath=output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
             )
-
-# def save_results(
-#     result: dict, 
-#     subtitle: bool = None, 
-#     annotate: bool = False,
-#     export_formats: str = 'all'
-#     ) -> None:
-#     """
-#     Write various output formats to disk.
-#     """
-#     # Write .json
-#     save_json(result, filepath=Path(f"{result['output_filepath']}.json"))
-    
-#     # Write .txt
-#     for language, transcription in result['transcription'].items():
-#         save_txt(transcription, filepath=Path(f"{result['output_filepath']}_{language}.txt"))
-    
-#     # Write subtitles (.srt and .webvtt)
-#     if subtitle:
-#         for language, transcription in result['transcription'].items():
-#             # .srt subtitles
-#             srt_text = create_subtitles(transcription, type='srt')
-#             save_subtitles(srt_text, type='srt', filepath=Path(f"{result['output_filepath']}_{language}.srt"))
-            
-#             # .webvtt / .vtt subtitles
-#             for type in ['webvtt', 'vtt']:
-#                 webvtt_text = create_subtitles(transcription, type=type, result=result)
-#                 save_subtitles(webvtt_text, type=type, filepath=Path(f"{result['output_filepath']}_{language}.{type}"))
-    
-#     # If self.annotate write additional .txt with annotated speakers
-#     if annotate:
-#         for language, transcription in result['transcription'].items():
-#             save_txt_with_speaker_annotation(
-#                 annotated_text=transcription['text_with_speaker_annotation'], 
-#                 filepath=Path(f"{result['output_filepath']}_{language}_annotated.txt")
-#                 )
-
-#     # Write .rttm
-#     if annotate:
-#         # Create .rttm annotations
-#         rttm_dict = dict_to_rttm(result)
-        
-#         # Save .rttm for each language found in result
-#         for language, rttm_annotation in rttm_dict.items():
-#             save_rttm_annotations(rttm=rttm_annotation,
-#                                   filepath=Path(f"{result['output_filepath']}_{language}.rttm"))        
-
 
 def create_text_with_speakers(transcription_dict: dict) -> dict:
     """
