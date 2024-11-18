@@ -7,7 +7,6 @@ from enum import Enum
 from typing import Optional, List
 from rich import print
 
-# Suppress all FutureWarnings / UserWarnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -125,7 +124,7 @@ def main(
         DeviceChoice.AUTO,
         "--device",
         "-d",
-        help="Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M3).",
+        help="Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4).",
     ),
     model: str = typer.Option(
         "large-v2",
