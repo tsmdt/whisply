@@ -4,32 +4,27 @@ import logging
 import ffmpeg
 
 from pathlib import Path
-from typing import Callable, Any
+from typing import Callable, Any, List
 from rich import print
 from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
-
 
 # Set logging configuration
 logger = logging.getLogger('little_helper')
 logger.setLevel(logging.INFO)
 
-
 def load_config(config: json) -> dict:
     with open(config, 'r', encoding='utf-8') as file:
         return json.load(file)
-
 
 def ensure_dir(dir: Path) -> None:
     if not dir.exists():
         dir.mkdir(parents=True)
     return dir
         
-
 def set_output_dir(filepath: Path, base_dir: Path) -> None:
     output_dir = base_dir / filepath.stem
     ensure_dir(output_dir)
     return output_dir
-
 
 def normalize_filepath(filepath: str) -> Path:
     """
@@ -69,13 +64,11 @@ def normalize_filepath(filepath: str) -> Path:
     
     return new_path
 
-    
 def save_json(result: dict, filepath: Path) -> None:    
     with open(filepath, 'w', encoding='utf-8') as fout:
         json.dump(result, fout, indent=4)
     print(f'[bold]→ Saved .json: {filepath}')
     logger.info(f"Saved .json to {filepath}")
-
 
 def save_txt(transcription: dict, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
@@ -83,13 +76,11 @@ def save_txt(transcription: dict, filepath: Path) -> None:
     print(f'[bold]→ Saved .txt: {filepath}')
     logger.info(f"Saved .txt transcript to {filepath}")
     
-
 def save_txt_with_speaker_annotation(annotated_text: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as txt_file:
         txt_file.write(annotated_text)
     print(f'[bold]→ Saved .txt with speaker annotation: {filepath}')
     logger.info(f'Saved .txt transcription with speaker annotation → {filepath}')
-    
     
 def save_subtitles(text: str, type: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as subtitle_file:
@@ -97,55 +88,121 @@ def save_subtitles(text: str, type: str, filepath: Path) -> None:
     print(f'[bold]→ Saved .{type} subtitles: {filepath}')
     logger.info(f'Saved .{type} subtitles → {filepath}')
     
-    
 def save_rttm_annotations(rttm: str, filepath: Path) -> None:
     with open(filepath, 'w', encoding='utf-8') as rttm_file:
         rttm_file.write(rttm)
     print(f'[bold]→ Saved .rttm annotations: {filepath}')
     logger.info(f'Saved .rttm annotations → {filepath}')
-    
-    
-def save_results(result: dict, subtitle: bool = None, annotate: bool = False) -> None:
+  
+def save_results(
+    result: dict,
+    export_formats: List[str]
+) -> None:
     """
-    Write various output formats to disk.
+    Write various output formats to disk based on the specified export formats.
     """
+    output_filepath = Path(result['output_filepath'])
+    transcription_items = result['transcription'].items()
+
     # Write .json
-    save_json(result, filepath=Path(f"{result['output_filepath']}.json"))
-    
+    if 'json' in export_formats:
+        save_json(result, filepath=output_filepath.with_suffix('.json'))
+
     # Write .txt
-    for language, transcription in result['transcription'].items():
-        save_txt(transcription, filepath=Path(f"{result['output_filepath']}_{language}.txt"))
-    
-    # Write subtitles (.srt and .webvtt)
-    if subtitle:
-        for language, transcription in result['transcription'].items():
+    if 'txt' in export_formats:
+        for language, transcription in transcription_items:
+            save_txt(
+                transcription,
+                filepath=output_filepath.parent / f"{output_filepath.name}_{language}.txt"
+            )
+
+    # Write subtitles (.srt, .vtt and .wevtt)
+    subtitle_formats = {'srt', 'vtt', 'webvtt'}
+    if subtitle_formats.intersection(export_formats):
+        for language, transcription in transcription_items:
             # .srt subtitles
-            srt_text = create_subtitles(transcription, type='srt')
-            save_subtitles(srt_text, type='srt', filepath=Path(f"{result['output_filepath']}_{language}.srt"))
-            
-            # .webvtt / .vtt subtitles
-            for type in ['webvtt', 'vtt']:
-                webvtt_text = create_subtitles(transcription, type=type, result=result)
-                save_subtitles(webvtt_text, type=type, filepath=Path(f"{result['output_filepath']}_{language}.{type}"))
-    
-    # If self.annotate write additional .txt with annotated speakers
-    if annotate:
-        for language, transcription in result['transcription'].items():
-            save_txt_with_speaker_annotation(
-                annotated_text=transcription['text_with_speaker_annotation'], 
-                filepath=Path(f"{result['output_filepath']}_{language}_annotated.txt")
+            if 'srt' in export_formats:
+                srt_text = create_subtitles(transcription, type='srt')
+                save_subtitles(
+                    srt_text,
+                    type='srt',
+                    filepath=output_filepath.parent / f"{output_filepath.name}_{language}.srt"
                 )
 
+            # .vtt / .webvtt subtitles
+            if 'vtt' in export_formats or 'webvtt' in export_formats:
+                for subtitle_type in ['webvtt', 'vtt']:
+                    vtt_text = create_subtitles(transcription, type=subtitle_type, result=result)
+                    save_subtitles(
+                        vtt_text,
+                        type=subtitle_type,
+                        filepath=output_filepath.parent / f"{output_filepath.name}_{language}.{subtitle_type}"
+                    )
+
+    # Write annotated .txt with speaker annotations
+    if 'txt' in export_formats and transcription['text_with_speaker_annotation']:
+        for language, transcription in transcription_items:
+            save_txt_with_speaker_annotation(
+                annotated_text=transcription['text_with_speaker_annotation'],
+                filepath=output_filepath.parent / f"{output_filepath.name}_{language}_annotated.txt"
+            )
+
     # Write .rttm
-    if annotate:
+    if 'rttm' in export_formats:
         # Create .rttm annotations
         rttm_dict = dict_to_rttm(result)
-        
-        # Save .rttm for each language found in result
-        for language, rttm_annotation in rttm_dict.items():
-            save_rttm_annotations(rttm=rttm_annotation,
-                                  filepath=Path(f"{result['output_filepath']}_{language}.rttm"))        
 
+        for language, rttm_annotation in rttm_dict.items():
+            save_rttm_annotations(
+                rttm=rttm_annotation,
+                filepath=output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
+            )
+
+# def save_results(
+#     result: dict, 
+#     subtitle: bool = None, 
+#     annotate: bool = False,
+#     export_formats: str = 'all'
+#     ) -> None:
+#     """
+#     Write various output formats to disk.
+#     """
+#     # Write .json
+#     save_json(result, filepath=Path(f"{result['output_filepath']}.json"))
+    
+#     # Write .txt
+#     for language, transcription in result['transcription'].items():
+#         save_txt(transcription, filepath=Path(f"{result['output_filepath']}_{language}.txt"))
+    
+#     # Write subtitles (.srt and .webvtt)
+#     if subtitle:
+#         for language, transcription in result['transcription'].items():
+#             # .srt subtitles
+#             srt_text = create_subtitles(transcription, type='srt')
+#             save_subtitles(srt_text, type='srt', filepath=Path(f"{result['output_filepath']}_{language}.srt"))
+            
+#             # .webvtt / .vtt subtitles
+#             for type in ['webvtt', 'vtt']:
+#                 webvtt_text = create_subtitles(transcription, type=type, result=result)
+#                 save_subtitles(webvtt_text, type=type, filepath=Path(f"{result['output_filepath']}_{language}.{type}"))
+    
+#     # If self.annotate write additional .txt with annotated speakers
+#     if annotate:
+#         for language, transcription in result['transcription'].items():
+#             save_txt_with_speaker_annotation(
+#                 annotated_text=transcription['text_with_speaker_annotation'], 
+#                 filepath=Path(f"{result['output_filepath']}_{language}_annotated.txt")
+#                 )
+
+#     # Write .rttm
+#     if annotate:
+#         # Create .rttm annotations
+#         rttm_dict = dict_to_rttm(result)
+        
+#         # Save .rttm for each language found in result
+#         for language, rttm_annotation in rttm_dict.items():
+#             save_rttm_annotations(rttm=rttm_annotation,
+#                                   filepath=Path(f"{result['output_filepath']}_{language}.rttm"))        
 
 
 def create_text_with_speakers(transcription_dict: dict) -> dict:
@@ -172,7 +229,7 @@ def create_text_with_speakers(transcription_dict: dict) -> dict:
             for word_info in words:
                 speaker = word_info.get('speaker')
                 word = word_info.get('word', '')
-                start_timestamp = format_time(word_info.get('start'), delimiter='.')
+                start_timestamp = format_time(word_info.get('start'), delimiter=',')
                 
                 # Insert speaker label if a speaker change is detected
                 if speaker != current_speaker:
@@ -186,7 +243,6 @@ def create_text_with_speakers(transcription_dict: dict) -> dict:
     
     return transcription_dict
 
-
 def format_time(seconds, delimiter=',') -> str:
     """
     Function for time conversion.
@@ -197,7 +253,6 @@ def format_time(seconds, delimiter=',') -> str:
     ms = int((seconds - int(seconds)) * 1000)
     
     return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
-
 
 def create_subtitles(transcription_dict: dict, type: str = 'srt', result: dict = None) -> str:
     """
@@ -242,7 +297,6 @@ def create_subtitles(transcription_dict: dict, type: str = 'srt', result: dict =
             subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
         
     return subtitle_text
-
 
 def dict_to_rttm(result: dict) -> dict:
     """
@@ -307,7 +361,6 @@ def dict_to_rttm(result: dict) -> dict:
 
     return rttm_dict
 
-
 def return_valid_fileformats() -> list[str]:
     return [
         '.mp3',
@@ -323,7 +376,6 @@ def return_valid_fileformats() -> list[str]:
         '.mpeg',
         '.vob'
         ]
-
 
 def check_file_format(filepath: Path) -> Path:
     """
@@ -386,7 +438,6 @@ def check_file_format(filepath: Path) -> Path:
             print(f"[bold]→ Error running ffprobe: {e}")
             print(f"[bold]→ You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
     
-
 def convert_file_format(old_filepath, new_filepath):
     """
     Converts a video file into an audio file in WAV format using the ffmpeg library.
@@ -415,7 +466,6 @@ def convert_file_format(old_filepath, new_filepath):
              overwrite_output=True)
     )
     
-
 def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
     """
     Helper function to run a task with a progress bar.

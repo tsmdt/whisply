@@ -1,6 +1,5 @@
 from rich import print
 
-
 WHISPER_MODELS = {
     # Models for faster-whisper / whisperx: https://huggingface.co/Systran
     # Models for insanely-fast-whisper: https://huggingface.co/openai
@@ -91,14 +90,11 @@ WHISPER_MODELS = {
         },
 }
 
-
 def ensure_model(model: str) -> bool:
     return model in WHISPER_MODELS
 
-
 def is_model_supported(model: str, implementation: str) -> bool:
     return True if WHISPER_MODELS.get(model)[implementation] != None else False
-
 
 def set_supported_model(model: str, implementation: str) -> str:
     if not is_model_supported(model, implementation):
