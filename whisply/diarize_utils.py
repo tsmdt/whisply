@@ -168,7 +168,7 @@ def diarize(outputs, **kwargs):
     ) as progress:
         progress.add_task(description=kwargs['description'], total=None)
 
-        inputs, diarizer_inputs = preprocess_inputs(
+        _, diarizer_inputs = preprocess_inputs(
             inputs=kwargs['file_name']
             )
 
@@ -183,15 +183,3 @@ def diarize(outputs, **kwargs):
         return post_process_segments_and_transcripts(
             segments, outputs["chunks"], group_by_speaker=False
         )
-
-class JsonTranscriptionResult(TypedDict):
-    speakers: list
-    chunks: list
-    text: str
-
-def build_result(transcript, outputs) -> JsonTranscriptionResult:
-    return {
-        "speakers": transcript,
-        "chunks": outputs["chunks"],
-        "text": outputs["text"],
-    }
