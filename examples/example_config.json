@@ -1,13 +1,14 @@
 {
-    "files": "path/to/files",
+    "files": "./files/my_files.list",
     "output_dir": "./transcriptions",
     "device": "auto",
-    "model": "large-v2",
-    "lang": null, 
+    "model": "large-v3-turbo",
+    "lang": null,
     "annotate": false,
-    "hf_token": "Your Hugging Face Access Token",
+    "hf_token": "hf_.......",
     "translate": false,
     "subtitle": false,
     "sub_length": 10,
-    "verbose": true
+    "export": "txt",
+    "verbose": false
 }

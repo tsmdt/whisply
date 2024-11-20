@@ -97,24 +97,23 @@ def save_rttm_annotations(rttm: str, filepath: Path) -> None:
 def save_results(
     result: dict,
     export_formats: List[str]
-) -> None:
+) -> list[Path]:
     """
     Write various output formats to disk based on the specified export formats.
     """
     output_filepath = Path(result['output_filepath'])
     transcription_items = result['transcription'].items()
-
-    # Write .json
-    if 'json' in export_formats:
-        save_json(result, filepath=output_filepath.with_suffix('.json'))
+    written_filepaths = []
 
     # Write .txt
     if 'txt' in export_formats:
         for language, transcription in transcription_items:
+            fout = output_filepath.parent / f"{output_filepath.name}_{language}.txt"
             save_txt(
                 transcription,
-                filepath=output_filepath.parent / f"{output_filepath.name}_{language}.txt"
+                filepath=fout
             )
+            written_filepaths.append(str(fout))
 
     # Write subtitles (.srt, .vtt and .wevtt)
     subtitle_formats = {'srt', 'vtt', 'webvtt'}
@@ -122,22 +121,18 @@ def save_results(
         for language, transcription in transcription_items:
             # .srt subtitles
             if 'srt' in export_formats:
+                fout = output_filepath.parent / f"{output_filepath.name}_{language}.srt"
                 srt_text = create_subtitles(transcription, type='srt')
-                save_subtitles(
-                    srt_text,
-                    type='srt',
-                    filepath=output_filepath.parent / f"{output_filepath.name}_{language}.srt"
-                )
+                save_subtitles(srt_text, type='srt', filepath=fout)
+                written_filepaths.append(str(fout))
 
             # .vtt / .webvtt subtitles
             if 'vtt' in export_formats or 'webvtt' in export_formats:
                 for subtitle_type in ['webvtt', 'vtt']:
+                    fout = output_filepath.parent / f"{output_filepath.name}_{language}.{subtitle_type}"
                     vtt_text = create_subtitles(transcription, type=subtitle_type, result=result)
-                    save_subtitles(
-                        vtt_text,
-                        type=subtitle_type,
-                        filepath=output_filepath.parent / f"{output_filepath.name}_{language}.{subtitle_type}"
-                    )
+                    save_subtitles(vtt_text, type=subtitle_type, filepath=fout)
+                    written_filepaths.append(str(fout))
 
     # Write annotated .txt with speaker annotations
     has_speaker_annotation = False
@@ -147,10 +142,12 @@ def save_results(
     
     if 'txt' in export_formats and has_speaker_annotation:
         for language, transcription in transcription_items:
+            fout = output_filepath.parent / f"{output_filepath.name}_{language}_annotated.txt"
             save_txt_with_speaker_annotation(
                 annotated_text=transcription['text_with_speaker_annotation'],
-                filepath=output_filepath.parent / f"{output_filepath.name}_{language}_annotated.txt"
+                filepath=fout
             )
+            written_filepaths.append(str(fout))
 
     # Write .rttm
     if 'rttm' in export_formats:
@@ -158,10 +155,21 @@ def save_results(
         rttm_dict = dict_to_rttm(result)
 
         for language, rttm_annotation in rttm_dict.items():
+            fout = output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
             save_rttm_annotations(
                 rttm=rttm_annotation,
-                filepath=output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
+                filepath=fout
             )
+            written_filepaths.append(str(fout))
+            
+    # Write .json
+    if 'json' in export_formats:
+        fout = output_filepath.with_suffix('.json')
+        written_filepaths.append(str(fout))
+        result['written_files'] = written_filepaths
+        save_json(result, filepath=fout)
+        
+    return written_filepaths
 
 def create_text_with_speakers(transcription_dict: dict) -> dict:
     """
@@ -423,7 +431,7 @@ def convert_file_format(old_filepath, new_filepath):
         .run(quiet=True,
              overwrite_output=True)
     )
-    
+ 
 def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
     """
     Helper function to run a task with a progress bar.

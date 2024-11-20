@@ -401,7 +401,7 @@ class TranscriptionHandler:
 
     def transcribe_with_insane_whisper(self, filepath: Path) -> dict:
         """
-        Transcribes a file using the 'insanely-fast-whisper' implementation: https://github.com/chenxwh/insanely-fast-whisper
+        Transcribes a file using the 'insanely-fast-whisper' implementation: https://github.com/Vaibhavs10/insanely-fast-whisper
 
         This method utilizes the 'insanely-fast-whisper' implementation of OpenAI Whisper for automatic speech recognition.
         It initializes a pipeline for transcription and retrieves the result. If speaker detection is enabled,
@@ -647,8 +647,6 @@ class TranscriptionHandler:
         return {'transcription': result}
             
     def get_filepaths(self, filepath: str):
-        # self.filepaths = []  
-        
         # Get single url
         if validators.url(filepath):
             downloaded_path = download_utils.download_url(filepath, downloads_dir=Path('./downloads'))
@@ -748,12 +746,13 @@ class TranscriptionHandler:
 
         # Get filepaths
         for file in files:
-            self.get_filepaths(file)
+            self.get_filepaths(file)        
             
         logging.info(f"Processing files: {self.filepaths}")
 
         self.processed_files = []
-        for idx, filepath in enumerate(self.filepaths):            
+        for idx, filepath in enumerate(self.filepaths):      
+                  
             # Create and set output_dir and output_filepath
             self.output_dir = little_helper.set_output_dir(filepath, self.base_dir)
             output_filepath = self.output_dir / Path(filepath).stem
@@ -797,13 +796,14 @@ class TranscriptionHandler:
                 'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'input_filepath': str(filepath.absolute()),
                 'output_filepath': str(Path(output_filepath).absolute()),
+                'written_files': None,
                 'device': self.device,
                 'model': self.model,
                 'transcription': result_data['transcription']['transcriptions'],
             }
 
             # Save results
-            little_helper.save_results(
+            result['written_files'] = little_helper.save_results(
                 result=result, 
                 export_formats=self.export_formats
                 )

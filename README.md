@@ -6,7 +6,7 @@
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
-`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and [insanely-fast-whisper](https://github.com/chenxwh/insanely-fast-whisper) to offer an easy-to-use solution for batch processing files. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
+`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) to offer an easy-to-use solution for batch processing files. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
 
 ## Table of contents
 
@@ -14,6 +14,8 @@
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
+  - [CLI](#cli)
+  - [App](#app)
   - [Speaker annotation and diarization](#speaker-annotation-and-diarization)
     - [Requirements](#requirements-1)
     - [How speaker annotation works](#how-speaker-annotation-works)
@@ -99,7 +101,7 @@ cd whisply
 
 **3. Create a Python virtual environment**
 
-```python
+```shell
 python3 -m venv venv
 ```
 
@@ -111,16 +113,19 @@ source venv/bin/activate
 
 **5. Install `whisply` with `pip`**
 
-```python
+```shell
 pip install .
 ```
 
-or 
-```python
+*or*
+
+```shell
 pip install whisply
 ```
 
 ## Usage
+
+### CLI
 
 ```shell
 
@@ -148,7 +153,18 @@ pip install whisply
 │ --show-completion                                                  Show completion for the current shell, to copy it or customize the installation.        │
 │ --help                                                             Show this message and exit.                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  ```
+```
+
+### App
+
+Instead of running `whisply` from the CLI you can start the `gradio` app instead:
+
+```shell
+python app.py
+```
+
+<img src="./assets/gui.png" width="100%">
+
 
 ### Speaker annotation and diarization
 
