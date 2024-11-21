@@ -166,7 +166,7 @@ python app.py
 ```
 
 <p align="center">
-  <img src="./assets/whisply_app.png" width="50%">
+  <img src="./assets/whisply_app.png" width="60%">
 </p>
 
 
