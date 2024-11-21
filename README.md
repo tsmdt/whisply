@@ -165,8 +165,8 @@ Instead of running `whisply` from the CLI you can start the `gradio` app instead
 python app.py
 ```
 
-<p style="text-align: center;">
-  <img src="./assets/whisply_app.png" width="60%">
+<p align="center">
+  <img src="./assets/whisply_app.png" width="50%">
 </p>
 
 
