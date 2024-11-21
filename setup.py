@@ -15,6 +15,7 @@ setup(
     url="https://github.com/tsmdt/whisply",
     install_requires=[
         'typer==0.12.5',
+        'numpy==1.26.4',
         'faster-whisper==1.0.1',
         'ffmpeg-python==0.2.0',
         'optimum==1.19.1',

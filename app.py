@@ -1,12 +1,22 @@
 import gradio as gr
 import os
-import threading
-import time
 import shutil
-import io
-import contextlib
+from datetime import datetime
 
+from pathlib import Path
 from whisply.transcription import TranscriptionHandler
+from whisply import little_helper, models
+
+CSS = """
+h1 {
+    font-size: 36px;
+    font-weight: 800; 
+    }
+    
+.svelte-1ed2p3z {
+    text-align: center;
+}
+"""
 
 LANGUAGES = {
     "en": "english",
@@ -116,7 +126,7 @@ def get_device() -> str:
     Determine the computation device based on user preference and availability.
     """
     import torch
-    
+
     if torch.cuda.is_available():
         device = 'cuda:0'
     elif torch.backends.mps.is_available():
@@ -125,12 +135,18 @@ def get_device() -> str:
         device = 'cpu'
     return device
 
-def transcribe(file, model, device, language, options, sub_length):
+def transcribe(file, model, device, language, options, hf_token, sub_length):
     if not options:
         options = []
     annotate = 'Annotate Speakers' in options
     translate = 'Translate to English' in options
     subtitle = 'Generate Subtitles' in options
+
+    if (annotate or subtitle) and not hf_token:
+        hf_token = os.getenv('HF_TOKEN')
+        if not hf_token:
+            yield 'A HuggingFace Access Token is required for annotation or subtitling: https://huggingface.co/docs/hub/security-tokens', None
+            return
 
     if file is None:
         yield "Please upload a file.", None
@@ -140,104 +156,163 @@ def transcribe(file, model, device, language, options, sub_length):
     if not isinstance(file, list):
         file = [file]
 
-    # Create an io.StringIO buffer to capture stdout
-    stdout_buffer = io.StringIO()
+    # Start the progress bar
+    progress = gr.Progress()
+    progress(0)
 
-    # Define handler in the enclosing scope
-    handler = None
+    try:
+        # Total steps calculation
+        steps_per_file = 5  # Number of steps per file
+        total_steps = steps_per_file * len(file)
+        current_step = 0
 
-    def run_transcription():
-        nonlocal handler
-        try:            
-            # Redirect stdout to the buffer
-            with contextlib.redirect_stdout(stdout_buffer):
-                print('→ Starting transcription.')
+        # Save the uploaded file to a temporary directory
+        temp_dir = './app_uploads'
+        os.makedirs(temp_dir, exist_ok=True)
+
+        temp_file_paths = []
+        for uploaded_file in file:
+            # Get the base name of the file to avoid issues with absolute paths
+            temp_file_name = os.path.basename(uploaded_file.name)
+            temp_file_path = os.path.join(temp_dir, temp_file_name)
+
+            # Copy the file from Gradio's temp directory to our local directory
+            shutil.copyfile(uploaded_file.name, temp_file_path)
+            temp_file_paths.append(temp_file_path)
+
+        # Adjust the device based on user selection
+        if device == 'auto':
+            device_selected = get_device()
+        elif device == 'gpu':
+            import torch
+            if torch.cuda.is_available():
+                device_selected = 'cuda:0'
+            else:
+                print("→ CUDA is not available. Falling back to auto device selection.")
+                device_selected = get_device()
+        else:
+            device_selected = device
+
+        # Handle export formats
+        export_formats_map = {
+            'standard': ['json', 'txt'],
+            'annotate': ['rttm', 'txt', 'json'],
+            'subtitle': ['vtt', 'webvtt', 'srt', 'txt', 'json'],
+            'translate': ['txt', 'json']
+        }
+
+        export_formats_list = set(export_formats_map['standard'])
+
+        if annotate:
+            export_formats_list.update(export_formats_map['annotate'])
+        if subtitle:
+            export_formats_list.update(export_formats_map['subtitle'])
+        if translate:
+            export_formats_list.update(export_formats_map['translate'])
+
+        export_formats_list = list(export_formats_list)
+
+        # Create an instance of TranscriptionHandler with the provided parameters
+        handler = TranscriptionHandler(
+            base_dir='./app_transcriptions',
+            model=model,
+            device=device_selected,
+            file_language=language if language else None,
+            annotate=annotate,
+            translate=translate,
+            subtitle=subtitle,
+            sub_length=int(sub_length) if subtitle else 5,
+            hf_token=hf_token,
+            verbose=True,
+            export_formats=export_formats_list
+        )
+
+        # Initialize processed_files list
+        handler.processed_files = []
+        for idx, filepath in enumerate(temp_file_paths):
+            filepath = Path(filepath)
+            
+            # Update progress
+            current_step += 1
+            progress(current_step / total_steps)
+
+            # Create and set output_dir and output_filepath
+            handler.output_dir = little_helper.set_output_dir(filepath, handler.base_dir)
+            output_filepath = handler.output_dir / filepath.stem
+
+            # Convert file format
+            filepath = little_helper.check_file_format(filepath)
+            
+            # Update progress
+            current_step += 1
+            progress(current_step / total_steps)
+
+            # Detect file language
+            if not handler.file_language:
+                handler.detect_language(file=filepath)
                 
-                # Save the uploaded file to a temporary directory
-                temp_dir = './app_uploads'
-                os.makedirs(temp_dir, exist_ok=True)
+            # Update progress
+            current_step += 1
+            progress(current_step / total_steps)
 
-                temp_file_paths = []
-                for uploaded_file in file:
-                    # Get the base name of the file to avoid issues with absolute paths
-                    temp_file_name = os.path.basename(uploaded_file.name)
-                    temp_file_path = os.path.join(temp_dir, temp_file_name)
-
-                    # Copy the file from Gradio's temp directory to our local directory
-                    shutil.copyfile(uploaded_file.name, temp_file_path)
-                    temp_file_paths.append(temp_file_path)
-
-                print(f'→ Loaded file(s): {temp_file_paths}')
-                
-                # Adjust the device based on user selection
-                if device == 'auto':
-                    device_selected = get_device()
-                elif device == 'gpu':
-                    import torch
-                    if torch.cuda.is_available():
-                        device_selected = 'cuda:0'
-                    else:
-                        print("→ CUDA is not available. Falling back to auto device selection.")
-                        device_selected = get_device()
-                else:
-                    device_selected = device  
-                    
-                print(f'→ Found device: {device_selected.upper()}')
-                
-                # Handle export formats
-                export_formats_map = {
-                    'standard': ['json', 'txt'],
-                    'annotate': ['rttm', 'txt', 'json'],
-                    'subtitle': ['vtt', 'webvtt', 'srt', 'txt', 'json'],
-                    'translate': ['txt', 'json']
-                }
-
-                export_formats_list = set(export_formats_map['standard'])
-
-                if annotate:
-                    export_formats_list.update(export_formats_map['annotate'])
-                if subtitle:
-                    export_formats_list.update(export_formats_map['subtitle'])
-                if translate:
-                    export_formats_list.update(export_formats_map['translate'])
-
-                export_formats_list = list(export_formats_list)
-
-                # Create an instance of TranscriptionHandler with the provided parameters
-                handler = TranscriptionHandler(
-                    base_dir='./app_transcriptions',
-                    model=model,
-                    device=device_selected,
-                    file_language=language if language else None,
-                    annotate=annotate,
-                    translate=translate,
-                    subtitle=subtitle,
-                    sub_length=int(sub_length) if subtitle else 5,
-                    verbose=True,
-                    export_formats=export_formats_list
+            # Transcription and speaker annotation
+            if handler.device == 'mps':
+                handler.model = models.set_supported_model(
+                    handler.model_provided,
+                    implementation='insane-whisper'
                 )
+                result_data = handler.transcribe_with_insane_whisper(filepath)
 
-                # Process the uploaded files
-                handler.process_files(temp_file_paths)
-                print(f'→ Finished transcription.')
-                
-        except Exception as e:
-            print(f"→ Error during transcription: {e}")
+            elif handler.device in ['cpu', 'cuda:0']:
+                if handler.annotate or handler.subtitle:
+                    handler.model = models.set_supported_model(
+                        handler.model_provided,
+                        implementation='whisperx'
+                    )
+                    result_data = handler.transcribe_with_whisperx(filepath)
+                else:
+                    handler.model = models.set_supported_model(
+                        handler.model_provided,
+                        implementation='faster-whisper'
+                    )
+                    result_data = handler.transcribe_with_faster_whisper(filepath)
+                    
+            # Update progress
+            current_step += 1
+            progress(current_step / total_steps)
 
-    # Start the transcription in a separate thread
-    transcription_thread = threading.Thread(target=run_transcription)
-    transcription_thread.start()
+            result = {
+                'id': f'file_00{idx + 1}',
+                'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'input_filepath': str(Path(filepath).absolute()),
+                'output_filepath': str(Path(output_filepath).absolute()),
+                'written_files': None,
+                'device': handler.device,
+                'model': handler.model,
+                'transcription': result_data['transcription']['transcriptions'],
+            }
 
-    # While the thread is running, yield updated logs
-    while transcription_thread.is_alive():
-        stdout_output = stdout_buffer.getvalue()
-        combined_logs = '\n' + stdout_output
-        yield combined_logs, None
-        time.sleep(0.5) 
+            # Save results
+            result['written_files'] = little_helper.save_results(
+                result=result,
+                export_formats=handler.export_formats
+            )
+            
+            # Update progress
+            current_step += 1
+            progress(current_step / total_steps)
 
-    # After processing is done
-    stdout_output = stdout_buffer.getvalue()
-    combined_logs = '\n' + stdout_output
+            handler.processed_files.append(result)
+
+            if not handler.file_language_provided:
+                handler.file_language = None
+
+    except {} as e:
+        print(f"→ Error during transcription: {e}")
+        yield f"Transcription Error: {e}", None
+
+    finally:
+        progress(100)
 
     # Get the transcription results
     if handler and handler.processed_files:
@@ -246,12 +321,12 @@ def transcribe(file, model, device, language, options, sub_length):
             # Collect the paths of the generated files directly
             output_files = processed_file.get('written_files', [])
             output_files_set.update(output_files)
-        
-        output_files = list(output_files_set)
-    
-        yield combined_logs, output_files
+
+        output_files = sorted(list(output_files_set))
+
+        yield output_files
     else:
-        yield combined_logs + "\nTranscription failed.", None
+        yield "Transcription Error."
 
 # Define Gradio interface components
 inputs = [
@@ -259,10 +334,10 @@ inputs = [
     gr.Dropdown(
         choices=[
             'tiny',
-            'tine-en',
-            'base', 
+            'tiny-en',
+            'base',
             'base-en',
-            'small', 
+            'small',
             'small-en',
             'distil-small-en',
             'medium',
@@ -273,17 +348,17 @@ inputs = [
             'large-v2',
             'distil-large-v2',
             'large-v3',
-            'distil-large-v3', 
+            'distil-large-v3',
             'large-v3-turbo'],
         label="Model",
         value='large-v3-turbo',
-        info='Choose the Whisper model for the transcription. (*larger roughly equals to more accurate*)'
+        info='Choose the Whisper model for the transcription. (**larger roughly equals to more accurate**)'
     ),
     gr.Radio(
         choices=['auto', 'cpu', 'gpu', 'mps'],
-        label="Device ('auto' will run auto-dedection first)",
+        label="Device",
         value='auto',
-        info="'gpu' = Nvidia GPUs | 'mps' = Mac M1-M4"
+        info="**auto** = auto-detection | **gpu** = Nvidia GPUs | **mps** = Mac M1-M4"
     ),
     gr.Dropdown(
         choices=sorted(list(LANGUAGES.keys())),
@@ -295,8 +370,15 @@ inputs = [
         label="Options",
         value=[]
     ),
+    gr.Text(
+        label='HuggingFace Access Token (for annotation and subtitling)',
+        info="Refer to **README.md** to set up the Access Token correctly ...",
+        value=None,
+        lines=1,
+        max_lines=1
+    ),
     gr.Number(
-        label="Subtitle Length (words)", 
+        label="Subtitle Length (words)",
         value=5,
         info="""Subtitle segment length in words. \
 (Example: "10" will result in subtitles where each subtitle block has \
@@ -305,17 +387,22 @@ exactly 5 words)"""
 ]
 
 outputs = [
-    gr.Textbox(label="Logs", lines=10, max_lines=10, interactive=False),
     gr.Files(label="Transcriptions")
 ]
 
 title = "whisply 💬"
+desc = """
+Transcribe, translate, annotate and subtitle audio and video files with \
+OpenAI's Whisper ... fast!
+"""
 theme = gr.themes.Citrus(
     primary_hue="emerald",
     neutral_hue="slate",
     spacing_size=gr.themes.sizes.spacing_sm,
     text_size="md",
+    radius_size="sm",
     font=[gr.themes.GoogleFont('Open Sans', 'Roboto'), 'ui-sans-serif', 'system-ui', 'sans-serif'],
+    font_mono=['Roboto Mono', 'ui-monospace', 'Consolas', 'monospace'],
 )
 
 # Build and launch the Gradio interface
@@ -324,10 +411,13 @@ app = gr.Interface(
     inputs=inputs,
     outputs=outputs,
     title=title,
+    description=desc,
     theme=theme,
-    allow_flagging='never',
+    flagging_mode='never',
     submit_btn='Transcribe',
-    clear_btn=None
+    clear_btn=None,
+    css=CSS
 )
 
+app.queue()
 app.launch()

@@ -516,7 +516,7 @@ class TranscriptionHandler:
                 # Create full transcription with speaker annotation
                 result = little_helper.create_text_with_speakers(result)
 
-        except ValueError as e:
+        except {} as e:
             print(f'[bold]{e}')
         
         # Stop timing transcription

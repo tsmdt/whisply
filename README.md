@@ -28,7 +28,7 @@
   * CPU/GPU (Nvidia CUDA): `fast-whisper` or `whisperX`
   * MPS (Apple M1-M4): `insanely-fast-whisper`
 
-* ⏩ **large-v3-turbo Ready**: Support for [whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) on all devices. **Note**: Subtitling and annotations on CPU/GPU use `whisperX` for accurate timestamps, but `whisper-large-v3-turbo` isn’t currently available for `whisperX`. 
+* ⏩ **large-v3-turbo Ready**: Support for [whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) on all devices. **Note**: Subtitling and annotations on CPU/GPU use `whisperX` for accurate timestamps, but `whisper-large-v3-turbo` isn’t currently available for `whisperX`.
 
 * ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) for transcription and translation unless a specific `--device` option is passed.
 
@@ -38,6 +38,8 @@
 
 * 🧺 **Batch Processing**: Handle single files, folders, URLs, or lists via `.list` documents. See the [Batch processing](#batch-processing) section for details.
 
+* 👩‍💻 **CLI / App**: `whisply` can be run directly from CLI or as an app with a graphical user-interface (GUI).
+
 * ⚙️ **Export Formats**: Supports `.json`, `.txt`, `.txt (annotated)`, `.srt`, `.webvtt`, `.vtt`, and `.rttm`.
 
 ## Requirements
@@ -45,8 +47,8 @@
 * [FFmpeg](https://ffmpeg.org/)
 * \>= Python3.10
 * GPU  processing requires:
-  * Nvidia GPU (CUDA: cuBLAS and cuDNN 8 for CUDA 12) 
-  * Apple Metal Performance Shaders (MPS) (Mac M1-M3)
+  * Nvidia GPU (CUDA: cuBLAS and cuDNN 8 for CUDA 12)
+  * Apple Metal Performance Shaders (MPS) (Mac M1-M4)
 * Speaker annotation requires a [HuggingFace Access Token](https://huggingface.co/docs/hub/security-tokens)
 
 <details>
@@ -163,14 +165,18 @@ Instead of running `whisply` from the CLI you can start the `gradio` app instead
 python app.py
 ```
 
-<img src="./assets/gui.png" width="100%">
+<p style="text-align: center;">
+  <img src="./assets/whisply_app.png" width="60%">
+</p>
 
 
 ### Speaker annotation and diarization
 
 #### Requirements
 
-In order to annotate speakers using `--annotate` you need to provide a valid [HuggingFace](https://huggingface.co) access token using the `--hf_token` option. Additionally, you must accept the terms and conditions for both version 3.0 and version 3.1 of the `pyannote` segmentation model. For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1).
+In order to annotate speakers using `--annotate` you need to provide a valid [HuggingFace](https://huggingface.co) access token using the `--hf_token` option. Additionally, you must accept the terms and conditions for both version 3.0 and version 3.1 of the `pyannote` segmentation model.
+
+For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1#requirements) and make sure that you complete steps *"2. Accept pyannote/segmentation-3.0 user conditions"*, *"3. Accept pyannote/speaker-diarization-3.1 user conditions"* and *"4. Create access token at hf.co/settings/tokens"*.
 
 #### How speaker annotation works
 
