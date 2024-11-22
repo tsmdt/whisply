@@ -6,7 +6,7 @@
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
-`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) to offer an easy-to-use solution for batch processing files. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
+`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) to offer an easy-to-use solution for batch processing files on Windows, Linux and Mac. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
 
 ## Table of contents
 
@@ -130,39 +130,47 @@ pip install whisply
 ### CLI
 
 ```shell
+$ whisply
 
  Usage: whisply [OPTIONS]
 
  WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --files               -f       TEXT                                Path to file, folder, URL or .list to process. [default: None]                          │
-│ --output_dir          -o       DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                     │
-│ --device              -d       [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M3). [default: auto]   │
-│ --model               -m       TEXT                                Whisper model to use (List models via --list_models). [default: large-v2]               │
-│ --lang                -l       TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]    │
-│ --annotate            -a                                           Enable speaker annotation (Saves .rttm).                                                │
-│ --hf_token            -hf      TEXT                                HuggingFace Access token required for speaker annotation. [default: None]               │
-│ --translate           -t                                           Translate transcription to English.                                                     │
-│ --subtitle            -s                                           Create subtitles (Saves .srt, .vtt and .webvtt).                                        │
-│ --sub_length                   INTEGER                             Subtitle segment length in words. [default: 5]                                          │
-│ --export              -e       [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                                │
-│ --verbose             -v                                           Print text chunks during transcription.                                                 │
-│ --config                       PATH                                Path to configuration file. [default: None]                                             │
-│ --list_filetypes                                                   List supported audio and video file types.                                              │
-│ --list_models                                                      List available models.                                                                  │
-│ --install-completion                                               Install completion for the current shell.                                               │
-│ --show-completion                                                  Show completion for the current shell, to copy it or customize the installation.        │
-│ --help                                                             Show this message and exit.                                                             │
+│ --files               -f        TEXT                                Path to file, folder, URL or .list to process. [default: None]                         │
+│ --output_dir          -o        DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                    │
+│ --device              -d        [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto]  │
+│ --model               -m        TEXT                                Whisper model to use (List models via --list_models). [default: large-v2]              │
+│ --lang                -l        TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]   │
+│ --annotate            -a                                            Enable speaker annotation (Saves .rttm).                                               │
+│ --hf_token            -hf       TEXT                                HuggingFace Access token required for speaker annotation. [default: None]              │
+│ --translate           -t                                            Translate transcription to English.                                                    │
+│ --subtitle            -s                                            Create subtitles (Saves .srt, .vtt and .webvtt).                                       │
+│ --sub_length                    INTEGER                             Subtitle segment length in words. [default: 5]                                         │
+│ --export              -e        [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                               │
+│ --verbose             -v                                            Print text chunks during transcription.                                                │
+│ --del_originals       -del                                          Delete original input files after file conversion. (Default: False)                    │
+│ --config                        PATH                                Path to configuration file. [default: None]                                            │
+│ --list_filetypes                                                    List supported audio and video file types.                                             │
+│ --list_models                                                       List available models.                                                                 │
+│ --install-completion                                                Install completion for the current shell.                                              │
+│ --show-completion                                                   Show completion for the current shell, to copy it or customize the installation.       │
+│ --help                                                              Show this message and exit.                                                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### App
 
-Instead of running `whisply` from the CLI you can start the `gradio` app instead:
+Instead of running `whisply` from the CLI you can start the web app instead:
 
 ```shell
-python app.py
+$ python app.py
+```
+
+Open the local URL in your browser after starting the app (**Note**: The URL might differ from system to system):
+
+```shell
+* Running on local URL: http://127.0.0.1:7860
 ```
 
 <p align="center">

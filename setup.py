@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setup(
     name="whisply",
     author="Thomas Schmidt, Renat Shigapov",
-    version='0.4',
+    version='0.5',
     packages=find_packages(),
     license="Apache-2.0",
     description="Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!",
@@ -16,7 +16,7 @@ setup(
     install_requires=[
         'typer==0.12.5',
         'numpy==1.26.4',
-        'faster-whisper==1.0.1',
+        'faster-whisper==1.1.0',
         'ffmpeg-python==0.2.0',
         'optimum==1.19.1',
         'pyannote.audio==3.1.1',
@@ -33,7 +33,7 @@ setup(
         'transformers==4.39.3',
         'validators==0.28.1',
         'yt-dlp>=2024.07.07',
-        'whisperx==3.1.5',
+        'whisperx',
         'gradio==5.6.0'
     ],
     classifiers=[

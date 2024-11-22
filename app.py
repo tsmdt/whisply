@@ -19,6 +19,7 @@ h1 {
 """
 
 LANGUAGES = {
+    "auto": "auto-detection",
     "en": "english",
     "zh": "chinese",
     "de": "german",
@@ -217,13 +218,13 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
             base_dir='./app_transcriptions',
             model=model,
             device=device_selected,
-            file_language=language if language else None,
+            file_language=None if language == 'auto' else language,
             annotate=annotate,
             translate=translate,
             subtitle=subtitle,
             sub_length=int(sub_length) if subtitle else 5,
             hf_token=hf_token,
-            verbose=True,
+            verbose=False,
             export_formats=export_formats_list
         )
 
@@ -241,7 +242,10 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
             output_filepath = handler.output_dir / filepath.stem
 
             # Convert file format
-            filepath = little_helper.check_file_format(filepath)
+            filepath, audio_array = little_helper.check_file_format(
+                filepath=filepath,
+                del_originals=False
+                )
             
             # Update progress
             current_step += 1
@@ -249,7 +253,7 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
 
             # Detect file language
             if not handler.file_language:
-                handler.detect_language(file=filepath)
+                handler.detect_language(filepath, audio_array)
                 
             # Update progress
             current_step += 1
@@ -293,10 +297,10 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
             }
 
             # Save results
-            result['written_files'] = little_helper.save_results(
+            result['written_files'] = little_helper.OutputWriter().save_results(
                 result=result,
                 export_formats=handler.export_formats
-            )
+                )
             
             # Update progress
             current_step += 1
@@ -307,7 +311,7 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
             if not handler.file_language_provided:
                 handler.file_language = None
 
-    except {} as e:
+    except Exception as e:
         print(f"→ Error during transcription: {e}")
         yield f"Transcription Error: {e}", None
 
@@ -327,68 +331,16 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
         yield output_files
     else:
         yield "Transcription Error."
+        
+        
+def toggle_visibility(options):
+    """
+    Updates the visibility of conditional components based on selected options.
+    """
+    show_access_token = 'Annotate Speakers' in options
+    show_subtitle_length = 'Generate Subtitles' in options
+    return gr.update(visible=show_access_token), gr.update(visible=show_subtitle_length)
 
-# Define Gradio interface components
-inputs = [
-    gr.File(label="Upload File(s)", file_count='multiple'),
-    gr.Dropdown(
-        choices=[
-            'tiny',
-            'tiny-en',
-            'base',
-            'base-en',
-            'small',
-            'small-en',
-            'distil-small-en',
-            'medium',
-            'medium-en',
-            'distil-medium-en',
-            'large',
-            'large-v1',
-            'large-v2',
-            'distil-large-v2',
-            'large-v3',
-            'distil-large-v3',
-            'large-v3-turbo'],
-        label="Model",
-        value='large-v3-turbo',
-        info='Choose the Whisper model for the transcription. (**larger roughly equals to more accurate**)'
-    ),
-    gr.Radio(
-        choices=['auto', 'cpu', 'gpu', 'mps'],
-        label="Device",
-        value='auto',
-        info="**auto** = auto-detection | **gpu** = Nvidia GPUs | **mps** = Mac M1-M4"
-    ),
-    gr.Dropdown(
-        choices=sorted(list(LANGUAGES.keys())),
-        label="Language (leave blank for auto-detection)",
-        value=None
-    ),
-    gr.CheckboxGroup(
-        choices=['Annotate Speakers', 'Translate to English', 'Generate Subtitles'],
-        label="Options",
-        value=[]
-    ),
-    gr.Text(
-        label='HuggingFace Access Token (for annotation and subtitling)',
-        info="Refer to **README.md** to set up the Access Token correctly ...",
-        value=None,
-        lines=1,
-        max_lines=1
-    ),
-    gr.Number(
-        label="Subtitle Length (words)",
-        value=5,
-        info="""Subtitle segment length in words. \
-(Example: "10" will result in subtitles where each subtitle block has \
-exactly 5 words)"""
-    )
-]
-
-outputs = [
-    gr.Files(label="Transcriptions")
-]
 
 title = "whisply 💬"
 desc = """
@@ -405,19 +357,106 @@ theme = gr.themes.Citrus(
     font_mono=['Roboto Mono', 'ui-monospace', 'Consolas', 'monospace'],
 )
 
-# Build and launch the Gradio interface
-app = gr.Interface(
-    fn=transcribe,
-    inputs=inputs,
-    outputs=outputs,
-    title=title,
-    description=desc,
-    theme=theme,
-    flagging_mode='never',
-    submit_btn='Transcribe',
-    clear_btn=None,
-    css=CSS
-)
+# Build the Gradio Blocks interface
+with gr.Blocks(theme=theme, css=CSS) as app:
+    # Title and Description
+    gr.Markdown("# whisply 💬")
+    gr.Markdown("""
+    Transcribe, translate, annotate, and subtitle audio and video files with \
+    OpenAI's Whisper ... fast!
+    """)
 
+    # File Upload and Model Selection
+    with gr.Row():
+        with gr.Column():
+            uploaded_files = gr.File(label="Upload File(s)", file_count='multiple')
+            with gr.Row():
+                model_dropdown = gr.Dropdown(
+                    choices=[
+                        'tiny',
+                        'tiny-en',
+                        'base',
+                        'base-en',
+                        'small',
+                        'small-en',
+                        'distil-small-en',
+                        'medium',
+                        'medium-en',
+                        'distil-medium-en',
+                        'large',
+                        'large-v1',
+                        'large-v2',
+                        'distil-large-v2',
+                        'large-v3',
+                        'distil-large-v3',
+                        'large-v3-turbo'],
+                    label="Model",
+                    value='large-v3-turbo',
+                    info='Whisper model for the transcription.'
+                )
+                language_dropdown = gr.Dropdown(
+                choices=sorted(LANGUAGES.keys()),
+                label="Language",
+                value='auto',
+                info="**auto** = auto-detection"
+                )
+            with gr.Row():
+                device_radio = gr.Radio(
+                    choices=['auto', 'cpu', 'gpu', 'mps'],
+                    label="Device",
+                    value='auto',
+                    info="**auto** = auto-detection | **gpu** = Nvidia GPUs | **mps** = Mac M1-M4"
+                )
+            with gr.Row():
+                options_checkbox = gr.CheckboxGroup(
+                    choices=['Annotate Speakers', 'Translate to English', 'Generate Subtitles'],
+                    label="Options",
+                    value=[]
+                )
+            with gr.Row():
+                access_token_text = gr.Text(
+                    label='HuggingFace Access Token (for annotation and subtitling)',
+                    info="Refer to **README.md** to set up the Access Token correctly.",
+                    value=None,
+                    lines=1,
+                    max_lines=1,
+                    visible=False
+                )
+            with gr.Row():
+                subtitle_length_number = gr.Number(
+                    label="Subtitle Length (words)",
+                    value=5,
+                    info="""Subtitle segment length in words. \
+                (Example: "10" will result in subtitles where each subtitle block has \
+                exactly 5 words)""",
+                    visible=False
+                )
+                
+                # Event Handler to Toggle Visibility
+                options_checkbox.change(
+                    toggle_visibility,
+                    inputs=options_checkbox,
+                    outputs=[access_token_text, subtitle_length_number]
+                )
+        
+        with gr.Column():
+            outputs = gr.Files(label="Transcriptions")
+            transcribe_button = gr.Button("Transcribe")
+            
+            # Connect the Transcription Function
+            transcribe_button.click(
+                transcribe,
+                inputs=[
+                    uploaded_files,
+                    model_dropdown,
+                    device_radio,
+                    language_dropdown,
+                    options_checkbox,
+                    access_token_text,
+                    subtitle_length_number
+                ],
+                outputs=outputs
+            )
+            
 app.queue()
 app.launch()

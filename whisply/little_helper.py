@@ -1,16 +1,311 @@
 import re
+import os
 import json
 import logging
 import ffmpeg
+import validators
+import numpy as np
 
 from pathlib import Path
 from typing import Callable, Any, List
 from rich import print
 from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
+from whisply import download_utils
 
 # Set logging configuration
 logger = logging.getLogger('little_helper')
 logger.setLevel(logging.INFO)
+
+class FilePathProcessor:
+    """
+    Utility class for validating various filepaths.
+    """
+    def __init__(self, file_formats: List[str]):
+        self.file_formats = [fmt.lower() for fmt in file_formats]
+        self.filepaths: List[Path] = []
+
+    def get_filepaths(self, filepath: str):
+        """
+        Processes the provided filepath which can be a URL, a single file, a directory,
+        or a .list file containing multiple paths/URLs. It validates each input, downloads
+        URLs if necessary, and accumulates valid file paths for further processing.
+        """
+        path = Path(filepath).expanduser().resolve()
+        
+        try:
+            # Handle URL
+            if validators.url(filepath):
+                logging.info(f"Processing URL: {filepath}")
+                downloaded_path = download_utils.download_url(
+                    filepath, 
+                    downloads_dir=Path('./downloads')
+                )
+                if downloaded_path:
+                    self.filepaths.append(downloaded_path)
+                else:
+                    logging.error(f"Failed to download URL: {filepath}")
+                    print(f"[bold]→ Failed to download URL: {filepath}")
+                return  
+
+            # Handle .list file
+            elif path.suffix.lower() == '.list':
+                if not path.is_file():
+                    logging.error(f'The .list file "{path}" does not exist or is not a file.')
+                    print(f'[bold]→ The .list file "{path}" does not exist or is not a file.')
+                    return
+                
+                logging.info(f"Processing .list file: {path}")
+                with path.open('r', encoding='utf-8') as file:
+                    lpaths = set()
+                    for line in file:
+                        lpath = line.strip()
+                        if not lpath:
+                            continue 
+                        lpaths.add(lpath)
+                        
+                    for lpath in lpaths:
+                        if validators.url(lpath):
+                            downloaded_path = download_utils.download_url(
+                                lpath, 
+                                downloads_dir=Path('./downloads')
+                            )
+                            if downloaded_path:
+                                self.filepaths.append(downloaded_path)
+                            else:
+                                print(f'[bold]→ Failed to download URL: {lpath}')
+                        else:
+                            self._process_path(lpath)
+                return
+
+            # Handle single file or directory
+            else:
+                self._process_path(path)
+
+        except Exception as e:
+            logging.exception(f"An unexpected error occurred while processing '{filepath}': {e}")
+            return
+
+        # Remove duplicates by converting to a set of resolved absolute paths
+        unique_filepaths = set(p.resolve() for p in self.filepaths)
+        self.filepaths = list(unique_filepaths)
+
+        # Filter out files that have already been converted
+        self._filter_converted_files()
+        
+        # Final check to ensure there are files to process
+        if not self.filepaths:
+            logging.warning(f'No valid files found for processing. Please check the provided path: "{filepath}".')
+            print(f'[bold]→ No valid files found for processing. Please check the provided path: "{filepath}".')
+        else:
+            logging.info(f"Total valid files to process: {len(self.filepaths)}")
+
+    def _process_path(self, path_input: str | Path):
+        """
+        Processes a single path input, which can be a file or a directory.
+        """
+        path = Path(path_input).expanduser().resolve()
+
+        if path.is_file():
+            if path.suffix.lower() in self.file_formats:
+                logging.info(f"Adding file: {path}")
+                normalized_path = self._normalize_filepath(path)
+                self.filepaths.append(normalized_path)
+            else:
+                logging.warning(f'File "{path}" has unsupported format and will be skipped.')
+                print(f'[bold]→ File "{path}" has unsupported format and will be skipped.')
+        elif path.is_dir():
+            logging.info(f"Processing directory: {path}")
+            for file_format in self.file_formats:
+                for file in path.rglob(f'*{file_format}'):
+                    if file.is_file():
+                        logging.debug(f"Found file: {file}")
+                        normalized_path = self._normalize_filepath(file)
+                        self.filepaths.append(normalized_path)
+        else:
+            logging.error(f'Path "{path}" does not exist or is not accessible.')
+            print(f'[bold]→ Path "{path}" does not exist or is not accessible.')
+
+    def _normalize_filepath(self, filepath: Path) -> Path:
+        """
+        Normalizes the filepath. This function can be expanded based on specific normalization needs.
+        """    
+        # Normalize title
+        new_filename = re.sub(r'\W+', '_', filepath.stem)
+        
+        if new_filename.startswith('_'):
+            new_filename = new_filename[1:]
+        if new_filename.endswith('_'):
+            new_filename = new_filename[:-1]
+
+        # Construct new path and rename
+        new_path = filepath.parent / f"{new_filename}{filepath.suffix.lower()}"
+        filepath.rename(new_path)
+        
+        return filepath.resolve()
+
+    def _filter_converted_files(self):
+        """
+        Removes files that have already been converted to avoid redundant processing.
+        """
+        converted_suffix = '_converted.wav'
+        original_filepaths = []
+        converted_filepaths = set()
+
+        for fp in self.filepaths:            
+            if fp.name.endswith(converted_suffix):
+                converted_filepaths.add(fp)
+            else:
+                original_filepaths.append(fp)
+                
+        # Remove originals if their converted version exists
+        filtered_filepaths = [
+            fp for fp in original_filepaths
+            if not (fp.with_name(fp.stem + converted_suffix) in converted_filepaths)
+        ]
+        
+        # Extened filtered paths with converted paths
+        filtered_filepaths.extend(converted_filepaths)
+
+        removed_count = len(self.filepaths) - len(filtered_filepaths)
+        if removed_count > 0:
+            logging.info(f"Removed {removed_count} files already converted.")
+        self.filepaths = filtered_filepaths
+
+
+class OutputWriter:
+    """
+    Class for writing various output formats to disk.
+    """
+    def __init__(self):
+        self.cwd = Path.cwd()
+        pass 
+
+    def _save_file(self, content: str, filepath: Path, description: str, log_message: str) -> None:
+        with open(filepath, 'w', encoding='utf-8') as file:
+            file.write(content)
+        print(f'[bold]→ Saved {description}:[/bold] {filepath.relative_to(self.cwd)}')
+        logger.info(f'{log_message} {filepath}')
+
+    def save_json(self, result: dict, filepath: Path) -> None:
+        with open(filepath, 'w', encoding='utf-8') as fout:
+            json.dump(result, fout, indent=4)
+        print(f'[bold]→ Saved .json:[/bold] {filepath.relative_to(self.cwd)}')
+        logger.info(f"Saved .json to {filepath}")
+
+    def save_txt(self, transcription: dict, filepath: Path) -> None:
+        content = transcription['text'].strip()
+        self._save_file(
+            content=content,
+            filepath=filepath,
+            description='.txt',
+            log_message='Saved .txt transcript to'
+        )
+
+    def save_txt_with_speaker_annotation(self, annotated_text: str, filepath: Path) -> None:
+        self._save_file(
+            content=annotated_text,
+            filepath=filepath,
+            description='.txt with speaker annotation',
+            log_message='Saved .txt transcription with speaker annotation →'
+        )
+
+    def save_subtitles(self, text: str, type: str, filepath: Path) -> None:
+        description = f'.{type} subtitles'
+        log_message = f'Saved .{type} subtitles →'
+        self._save_file(
+            content=text,
+            filepath=filepath,
+            description=description,
+            log_message=log_message
+        )
+
+    def save_rttm_annotations(self, rttm: str, filepath: Path) -> None:
+        self._save_file(
+            content=rttm,
+            filepath=filepath,
+            description='.rttm annotations',
+            log_message='Saved .rttm annotations →'
+        )
+
+    def save_results(
+        self,
+        result: dict,
+        export_formats: List[str]
+    ) -> List[Path]:
+        """
+        Write various output formats to disk based on the specified export formats.
+        """
+        output_filepath = Path(result['output_filepath'])
+        transcription_items = result['transcription'].items()
+        written_filepaths = []
+
+        # Write .txt
+        if 'txt' in export_formats:
+            for language, transcription in transcription_items:
+                fout = output_filepath.parent / f"{output_filepath.name}_{language}.txt"
+                self.save_txt(
+                    transcription,
+                    filepath=fout
+                )
+                written_filepaths.append(str(fout))
+
+        # Write subtitles (.srt, .vtt and .webvtt)
+        subtitle_formats = {'srt', 'vtt', 'webvtt'}
+        if subtitle_formats.intersection(export_formats):
+            for language, transcription in transcription_items:
+                # .srt subtitles
+                if 'srt' in export_formats:
+                    fout = output_filepath.parent / f"{output_filepath.name}_{language}.srt"
+                    srt_text = create_subtitles(transcription, type='srt')
+                    self.save_subtitles(srt_text, type='srt', filepath=fout)
+                    written_filepaths.append(str(fout))
+
+                # .vtt / .webvtt subtitles
+                if 'vtt' in export_formats or 'webvtt' in export_formats:
+                    for subtitle_type in ['webvtt', 'vtt']:
+                        fout = output_filepath.parent / f"{output_filepath.name}_{language}.{subtitle_type}"
+                        vtt_text = create_subtitles(transcription, type=subtitle_type, result=result)
+                        self.save_subtitles(vtt_text, type=subtitle_type, filepath=fout)
+                        written_filepaths.append(str(fout))
+
+        # Write annotated .txt with speaker annotations
+        has_speaker_annotation = any(
+            'text_with_speaker_annotation' in transcription
+            for transcription in result['transcription'].values()
+        )
+
+        if 'txt' in export_formats and has_speaker_annotation:
+            for language, transcription in transcription_items:
+                if 'text_with_speaker_annotation' in transcription:
+                    fout = output_filepath.parent / f"{output_filepath.name}_{language}_annotated.txt"
+                    self.save_txt_with_speaker_annotation(
+                        annotated_text=transcription['text_with_speaker_annotation'],
+                        filepath=fout
+                    )
+                    written_filepaths.append(str(fout))
+
+        # Write .rttm
+        if 'rttm' in export_formats:
+            # Create .rttm annotations
+            rttm_dict = dict_to_rttm(result)
+
+            for language, rttm_annotation in rttm_dict.items():
+                fout = output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
+                self.save_rttm_annotations(
+                    rttm=rttm_annotation,
+                    filepath=fout
+                )
+                written_filepaths.append(str(fout))
+
+        # Write .json
+        if 'json' in export_formats:
+            fout = output_filepath.with_suffix('.json')
+            written_filepaths.append(str(fout))
+            result['written_files'] = written_filepaths
+            self.save_json(result, filepath=fout)
+
+        return written_filepaths
+
 
 def load_config(config: json) -> dict:
     with open(config, 'r', encoding='utf-8') as file:
@@ -25,151 +320,6 @@ def set_output_dir(filepath: Path, base_dir: Path) -> None:
     output_dir = base_dir / filepath.stem
     ensure_dir(output_dir)
     return output_dir
-
-def normalize_filepath(filepath: str) -> Path:
-    """
-    Renames a file at the given filepath by sanitizing its filename to a more standard format.
-
-    The function takes an existing file path, extracts the file name (excluding the extension),
-    and replaces any non-alphanumeric characters with underscores. It also ensures that the 
-    sanitized filename does not start or end with an underscore. Finally, it renames the file 
-    with the sanitized name while preserving the original file extension.
-
-    Parameters:
-    filepath : str or Path
-        The path to the file that needs to be renamed. This can be a string or a Path object
-        from the pathlib module.
-
-    Returns:
-    Path
-        The new path of the renamed file as a Path object. This includes the parent directory
-        and the new filename with its extension.
-    """
-    original_path = Path(filepath)
-    
-    # Normalize title
-    new_filename = re.sub(r'\W+', '_', original_path.stem)
-    
-    if new_filename.startswith('_'):
-        new_filename = new_filename[1:]
-        
-    if new_filename.endswith('_'):
-        new_filename = new_filename[:-1]
-
-    # Construct new path
-    new_path = original_path.parent / f"{new_filename}{original_path.suffix.lower()}"
-    
-    # Rename file
-    original_path.rename(new_path)
-    
-    return new_path
-
-def save_json(result: dict, filepath: Path) -> None:    
-    with open(filepath, 'w', encoding='utf-8') as fout:
-        json.dump(result, fout, indent=4)
-    print(f'[bold]→ Saved .json: {filepath}')
-    logger.info(f"Saved .json to {filepath}")
-
-def save_txt(transcription: dict, filepath: Path) -> None:
-    with open(filepath, 'w', encoding='utf-8') as txt_file:
-        txt_file.write(transcription['text'].strip())
-    print(f'[bold]→ Saved .txt: {filepath}')
-    logger.info(f"Saved .txt transcript to {filepath}")
-    
-def save_txt_with_speaker_annotation(annotated_text: str, filepath: Path) -> None:
-    with open(filepath, 'w', encoding='utf-8') as txt_file:
-        txt_file.write(annotated_text)
-    print(f'[bold]→ Saved .txt with speaker annotation: {filepath}')
-    logger.info(f'Saved .txt transcription with speaker annotation → {filepath}')
-    
-def save_subtitles(text: str, type: str, filepath: Path) -> None:
-    with open(filepath, 'w', encoding='utf-8') as subtitle_file:
-        subtitle_file.write(text)
-    print(f'[bold]→ Saved .{type} subtitles: {filepath}')
-    logger.info(f'Saved .{type} subtitles → {filepath}')
-    
-def save_rttm_annotations(rttm: str, filepath: Path) -> None:
-    with open(filepath, 'w', encoding='utf-8') as rttm_file:
-        rttm_file.write(rttm)
-    print(f'[bold]→ Saved .rttm annotations: {filepath}')
-    logger.info(f'Saved .rttm annotations → {filepath}')
-  
-def save_results(
-    result: dict,
-    export_formats: List[str]
-) -> list[Path]:
-    """
-    Write various output formats to disk based on the specified export formats.
-    """
-    output_filepath = Path(result['output_filepath'])
-    transcription_items = result['transcription'].items()
-    written_filepaths = []
-
-    # Write .txt
-    if 'txt' in export_formats:
-        for language, transcription in transcription_items:
-            fout = output_filepath.parent / f"{output_filepath.name}_{language}.txt"
-            save_txt(
-                transcription,
-                filepath=fout
-            )
-            written_filepaths.append(str(fout))
-
-    # Write subtitles (.srt, .vtt and .wevtt)
-    subtitle_formats = {'srt', 'vtt', 'webvtt'}
-    if subtitle_formats.intersection(export_formats):
-        for language, transcription in transcription_items:
-            # .srt subtitles
-            if 'srt' in export_formats:
-                fout = output_filepath.parent / f"{output_filepath.name}_{language}.srt"
-                srt_text = create_subtitles(transcription, type='srt')
-                save_subtitles(srt_text, type='srt', filepath=fout)
-                written_filepaths.append(str(fout))
-
-            # .vtt / .webvtt subtitles
-            if 'vtt' in export_formats or 'webvtt' in export_formats:
-                for subtitle_type in ['webvtt', 'vtt']:
-                    fout = output_filepath.parent / f"{output_filepath.name}_{language}.{subtitle_type}"
-                    vtt_text = create_subtitles(transcription, type=subtitle_type, result=result)
-                    save_subtitles(vtt_text, type=subtitle_type, filepath=fout)
-                    written_filepaths.append(str(fout))
-
-    # Write annotated .txt with speaker annotations
-    has_speaker_annotation = False
-    for _, transcription in transcription_items:
-        if 'text_with_speaker_annotation' in transcription:
-            has_speaker_annotation = True
-    
-    if 'txt' in export_formats and has_speaker_annotation:
-        for language, transcription in transcription_items:
-            fout = output_filepath.parent / f"{output_filepath.name}_{language}_annotated.txt"
-            save_txt_with_speaker_annotation(
-                annotated_text=transcription['text_with_speaker_annotation'],
-                filepath=fout
-            )
-            written_filepaths.append(str(fout))
-
-    # Write .rttm
-    if 'rttm' in export_formats:
-        # Create .rttm annotations
-        rttm_dict = dict_to_rttm(result)
-
-        for language, rttm_annotation in rttm_dict.items():
-            fout = output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
-            save_rttm_annotations(
-                rttm=rttm_annotation,
-                filepath=fout
-            )
-            written_filepaths.append(str(fout))
-            
-    # Write .json
-    if 'json' in export_formats:
-        fout = output_filepath.with_suffix('.json')
-        written_filepaths.append(str(fout))
-        result['written_files'] = written_filepaths
-        save_json(result, filepath=fout)
-        
-    return written_filepaths
 
 def create_text_with_speakers(transcription_dict: dict) -> dict:
     """
@@ -343,88 +493,108 @@ def return_valid_fileformats() -> list[str]:
         '.vob'
         ]
 
-def check_file_format(filepath: Path) -> Path:
+def check_file_format(
+    filepath: Path, 
+    del_originals: bool = True
+    ) -> tuple[Path, np.ndarray]:
     """
     Checks the format of an audio file and converts it if it doesn't meet specified criteria.
+    Then, loads the audio into a 1D NumPy array.
 
-    This function uses `ffmpeg` to probe the metadata of an audio file at the given `filepath`.
+    The function uses `ffmpeg` to probe the metadata of an audio file at the given `filepath`.
     It checks if the audio stream meets the following criteria:
     - Codec name: 'pcm_s16le'
     - Sample rate: 16000 Hz
     - Number of channels: 1 (mono)
 
     If the audio stream does not meet these criteria, the function attempts to convert the file
-    to meet the required format and saves the converted file with a '_converted' suffix in the same directory.
-    If the conversion is successful, the function returns the path to the converted file.
+    to meet the required format and saves the converted file with a '_converted.wav' suffix in the same directory.
+    After successful conversion, it deletes the original file.
+
+    Finally, it loads the audio (original or converted) as a 1D NumPy array and returns it.
 
     Args:
         filepath (Path): The path to the audio file to be checked and potentially converted.
 
     Returns:
-        Path: The path to the original file if it meets the criteria, or the path to the converted file.
+        filepath (Path): filepath of the checked and / or converted audio file.
+        np.ndarray: 1D NumPy array of the audio data.
     """ 
-    # Create a new file path for .wav conversion
-    new_filepath = f"{filepath.parent}/{filepath.stem}_converted.wav"
+    import librosa
     
-    if Path(new_filepath).exists():
-        return Path(new_filepath)
+    # Define the converted file path
+    new_filepath = filepath.with_name(f"{filepath.stem}_converted.wav")
+    
+    converted = False
+    
+    if new_filepath.exists():
+        target_filepath = new_filepath
+        converted = True
     else:
         try:
-            probe = ffmpeg.probe(filepath)
+            # Probe the audio file for stream information
+            probe = ffmpeg.probe(str(filepath))
             audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
             
             if not audio_streams:
-                print(f"[bold]→ No audio stream found for {filepath}. Please check if the file you have provided contains audio content.")
-                return False
+                raise ValueError(f"[bold]→ No audio stream found for {filepath}. Please check if the file you have provided contains audio content.")
             
             audio_stream = audio_streams[0]
             codec_name = audio_stream.get('codec_name')
             sample_rate = int(audio_stream.get('sample_rate', 0))
             channels = int(audio_stream.get('channels', 0))
             
-            # Convert the file if its metadata do not match these criteria:
+            # Check if the audio stream meets the criteria
             if codec_name != 'pcm_s16le' or sample_rate != 16000 or channels != 1:
                 try:
-                    new_filepath = f"{filepath.parent}/{filepath.stem}_converted.wav"
-                    
-                    # Convert file and show progress bar
+                    # Convert the file and show progress
                     run_with_progress(
-                        description=f"[orchid]→ Converting file to .wav: {filepath.name}", 
-                        task=lambda: convert_file_format(old_filepath=filepath, new_filepath=new_filepath)
-                        )
-                
-                    return Path(new_filepath)
-                
+                        description=(
+                            f"[orchid]→ Converting file to .wav: {filepath.name}"
+                            ), 
+                        task=lambda: convert_file_format(
+                            old_filepath=filepath, 
+                            new_filepath=new_filepath
+                            )
+                    )
+                    target_filepath = new_filepath
+                    converted = True
                 except Exception as e:
-                    raise RuntimeError(f"[bold]→ An error occurred while converting {filepath}: {e}")
+                    raise RuntimeError(
+                        f"[bold]→ An error occurred while converting {filepath}: {e}"
+                        )
             else:
-                return filepath
+                # If already in correct format, use the original file
+                target_filepath = filepath
             
         except ffmpeg.Error as e:
             print(f"[bold]→ Error running ffprobe: {e}")
             print(f"[bold]→ You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
     
-def convert_file_format(old_filepath, new_filepath):
+    try:
+        # Load the audio file into a NumPy array
+        audio, _ = librosa.load(str(target_filepath), sr=16000, mono=True)
+        audio_array = audio.astype(np.float32)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load audio from {target_filepath}: {e}") from e
+    
+    # If conversion occurred delete the original file if del_originals
+    if (converted and del_originals) and target_filepath != filepath:
+        try:
+            os.remove(filepath)
+        except OSError as e:
+            print(f"Warning: {e}")
+    
+    return Path(target_filepath), audio_array
+       
+def convert_file_format(old_filepath: str, new_filepath: str):
     """
     Converts a video file into an audio file in WAV format using the ffmpeg library.
-
-    This function takes a video file and extracts its audio content, converting it to a WAV
-    file with specific audio settings. The output audio will use PCM signed 16-bit little-endian
-    format, a sampling rate of 16 KHz, and will be mono (single channel). The output file is
-    overwritten if it already exists.
-
-    Parameters:
-    old_filepath : str
-        The path to the video file from which audio will be extracted. This must be a path
-        to a file that ffmpeg can read.
-    new_filepath : str
-        The path where the converted audio file will be saved as a WAV file. If a file at this
-        path already exists, it will be overwritten.
     """
     (
         ffmpeg
-        .input(old_filepath)
-        .output(new_filepath, 
+        .input(str(old_filepath))
+        .output(str(new_filepath), 
                 acodec='pcm_s16le', # Audio codec: PCM signed 16-bit little-endian
                 ar='16000',         # Sampling rate 16 KHz
                 ac=1)               # Mono channel                       
@@ -435,13 +605,6 @@ def convert_file_format(old_filepath, new_filepath):
 def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
     """
     Helper function to run a task with a progress bar.
-
-    Parameters:
-    - description (str): The description to display in the progress bar.
-    - task (Callable[[], Any]): The task to run, which returns a result.
-
-    Returns:
-    - Any: The result returned by the task.
     """
     with Progress(
         TextColumn("[progress.description]{task.description}"),

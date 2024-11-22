@@ -179,6 +179,12 @@ def main(
         "-v",
         help="Print text chunks during transcription.",
     ),
+    del_originals: bool = typer.Option(
+        False,
+        "--del_originals",
+        "-del",
+        help="Delete original input files after file conversion. (Default: False)",
+    ),
     config: Optional[Path] = typer.Option(
         None,
         "--config",
@@ -261,6 +267,7 @@ def main(
         subtitle=subtitle,
         sub_length=sub_length,
         verbose=verbose,
+        del_originals=del_originals,
         export_formats=export_formats
     )
     # Process files

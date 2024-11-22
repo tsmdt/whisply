@@ -1,12 +1,12 @@
 import logging
 import time
-import validators
-
 from pathlib import Path
 from datetime import datetime
 from functools import partial
 from rich import print
-from whisply import little_helper, download_utils, models
+
+from whisply import little_helper, models
+from whisply.little_helper import FilePathProcessor, OutputWriter
 
 # Set logging configuration
 logging.basicConfig(filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
@@ -97,6 +97,7 @@ class TranscriptionHandler:
         sub_length=None, 
         translate=False, 
         verbose=False,
+        del_originals=False,
         export_formats='all'
     ):
         self.base_dir = little_helper.ensure_dir(Path(base_dir))
@@ -112,6 +113,7 @@ class TranscriptionHandler:
         self.subtitle = subtitle
         self.sub_length = sub_length
         self.verbose = verbose
+        self.del_originals = del_originals
         self.export_formats = export_formats
         self.metadata = self._collect_metadata()
         self.filepaths = []
@@ -327,13 +329,17 @@ class TranscriptionHandler:
                 whisper_arch=self.model, 
                 device=device, 
                 compute_type='float16' if self.device == 'cuda:0' else 'int8', 
-                language=self.file_language or None
-                )
+                language=self.file_language or None,
+                asr_options={
+                    "hotwords": None,
+                    "multilingual": False
+                })
             audio = whisperx.load_audio(str(filepath), sr=16000)
             result = model.transcribe(
                 audio, 
                 batch_size=16 if self.device == 'cuda:0' else 8, 
-                task=task)
+                task=task
+                )
             
             model_a, metadata = whisperx.load_align_model(device=device, language_code=language)
             result = whisperx.align(result["segments"], model_a, metadata, audio, device, 
@@ -433,7 +439,7 @@ class TranscriptionHandler:
                 model_kwargs = {
                     "attn_implementation": "flash_attention_2"
                     } if is_flash_attn_2_available() else {
-                        "attn_implementation": "sdpa"
+                        "attn_implementation": "eager"
                         },
             )
             
@@ -442,7 +448,7 @@ class TranscriptionHandler:
                 transcription_result = pipe(
                     str(filepath),
                     chunk_length_s = 30,
-                    batch_size = 8 if self.device in ['cpu', 'mps'] else 24,
+                    batch_size = 8,
                     return_timestamps = 'word', # True, word, chunk
                     generate_kwargs = {
                         'language': self.file_language,
@@ -542,19 +548,20 @@ class TranscriptionHandler:
                 the speaker diarization result. The transcription result includes the recognized text
                 and segmented chunks with timestamps if available.
         """
-        from faster_whisper import WhisperModel
+        from faster_whisper import WhisperModel, BatchedInferencePipeline
 
         # Start and time transcription
         logging.info(f"👨‍💻 Transcription started with 🏃‍♀️‍➡️ faster-whisper for {filepath.name}")
         t_start = time.time()
         
         # Load model and set parameters
-        model = WhisperModel(
+        model = BatchedInferencePipeline(
+            model = WhisperModel(
             self.model, 
             device='cpu' if self.device in ['mps', 'cpu'] else 'cuda', 
             num_workers=num_workers, 
             compute_type='int8' if self.device in ['mps', 'cpu'] else 'float16'
-        )
+        ))
         
         # Define the transcription task
         def transcription_task():
@@ -562,7 +569,8 @@ class TranscriptionHandler:
                 str(filepath), 
                 beam_size=5, 
                 language=self.file_language,
-                word_timestamps=True
+                word_timestamps=True,
+                batch_size=16
             )
                 
             chunks = []    
@@ -645,68 +653,14 @@ class TranscriptionHandler:
         logging.info(f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec.")
         
         return {'transcription': result}
-            
-    def get_filepaths(self, filepath: str):
-        # Get single url
-        if validators.url(filepath):
-            downloaded_path = download_utils.download_url(filepath, downloads_dir=Path('./downloads'))
-            if downloaded_path:
-                self.filepaths.append(downloaded_path)
-        
-        # Get single file with correct file_format
-        elif Path(filepath).suffix.lower() in self.file_formats:
-            filepath = little_helper.normalize_filepath(filepath)
-            self.filepaths.append(Path(filepath))
-        
-        # Get all files with correct file_format from folder
-        elif Path(filepath).is_dir():
-            for file_format in self.file_formats:
-                filepaths = Path(filepath).glob(f'*{file_format}')
-                new_filepaths = [little_helper.normalize_filepath(filepath) for filepath in filepaths]
-                self.filepaths.extend(new_filepaths)
-                
-        # Get all files, folders, urls from .list
-        elif Path(filepath).suffix == '.list':
-            with open(filepath, 'r', encoding='utf-8') as file:
-                listpaths = file.read().split('\n')
-                for lpath in listpaths:
-                    if validators.url(lpath):
-                        downloaded_path = download_utils.download_url(
-                            lpath, 
-                            downloads_dir=Path('./downloads')
-                            )
-                        if downloaded_path:
-                            self.filepaths.append(downloaded_path)
-                    elif Path(lpath).is_file() and Path(lpath).suffix.lower() in self.file_formats:
-                        newpath = little_helper.normalize_filepath(lpath)
-                        self.filepaths.append(Path(newpath))
-                    else:
-                        print(f'[bold]→ Error loading "{lpath}": Check if the file exists and the filepath is correct.')
-        
-        else:
-            print(f'[bold]→ The provided file or filetype "{filepath}" is not supported.')
-            
-        # Filter out duplicates from previous file conversions
-        to_remove = []
-        for filepath in self.filepaths:
-            converted_filepath = filepath.with_stem(filepath.stem + '_converted').with_suffix('.wav')
-            if converted_filepath in self.filepaths:
-                to_remove.append(filepath)
-        
-        for filepath in to_remove:
-            self.filepaths.remove(filepath)
-            
-        # If no files with correct file_format were provided print message
-        if len(self.filepaths) == 0:
-            print(f'[bold]→ No files found for processing. Please check the file(s) or path you have provided: "{filepath}".')
    
-    def detect_language(self, file: Path) -> str:   
+    def detect_language(self, filepath, audio_array) -> str:   
         """
         Detects the language of the input file.
         """
         from faster_whisper import WhisperModel
-
-        logging.debug(f"Detecting language of file: {file.name}")        
+        
+        logging.debug(f"Detecting language of file: {filepath.name}")    
         
         def run_language_detection():
             lang_detection_model = WhisperModel(
@@ -714,18 +668,18 @@ class TranscriptionHandler:
                 device='cpu' if self.device in ['mps', 'cpu'] else 'cuda', 
                 compute_type='int8' if self.device in ['mps', 'cpu'] else 'float16'
                 )
-            _, info = lang_detection_model.transcribe(str(file), beam_size=5)
-            return info
+            lang, score, _ = lang_detection_model.detect_language(audio_array)
+            return lang, score
         
-        info = little_helper.run_with_progress(
-            description=f"[dark_goldenrod]→ Detecting language for {file.name}",
+        lang, score = little_helper.run_with_progress(
+            description=f"[dark_goldenrod]→ Detecting language for {filepath.name}",
             task=run_language_detection                  
         )    
         
-        self.file_language = info.language    
+        self.file_language = lang   
 
-        print(f'[bold]→ Detected language "{info.language}" with probability {info.language_probability:.2f}')
-        logging.debug(f'Detected language → "{info.language}" with probability {info.language_probability:.2f}')
+        print(f'[bold]→ Detected language "{lang}" with probability {score:.2f}')
+        logging.debug(f'Detected language → "{lang}" with probability {score:.2f}')
         
     def process_files(self, files) -> None:
         """
@@ -745,11 +699,13 @@ class TranscriptionHandler:
         logging.info(f"Provided parameters for processing: {self.metadata}")
 
         # Get filepaths
-        for file in files:
-            self.get_filepaths(file)        
-            
+        filepath_handler = FilePathProcessor(self.file_formats)
+        [filepath_handler.get_filepaths(f) for f in files]            
+        self.filepaths = filepath_handler.filepaths
+        
+        # Process filepaths
         logging.info(f"Processing files: {self.filepaths}")
-
+        
         self.processed_files = []
         for idx, filepath in enumerate(self.filepaths):      
                   
@@ -758,11 +714,14 @@ class TranscriptionHandler:
             output_filepath = self.output_dir / Path(filepath).stem
             
             # Convert file format 
-            filepath = little_helper.check_file_format(filepath)
+            filepath, audio_array = little_helper.check_file_format(
+                filepath=filepath,
+                del_originals=self.del_originals
+                )
             
             # Detect file language
             if not self.file_language:
-                self.detect_language(file=filepath)
+                self.detect_language(filepath, audio_array)
 
             # Transcription and speaker annotation
             logging.info(f"Transcribing file: {filepath.name}")
@@ -803,8 +762,8 @@ class TranscriptionHandler:
             }
 
             # Save results
-            result['written_files'] = little_helper.save_results(
-                result=result, 
+            result['written_files'] = OutputWriter().save_results(
+                result=result,
                 export_formats=self.export_formats
                 )
             
