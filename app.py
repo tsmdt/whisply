@@ -2,10 +2,7 @@ import gradio as gr
 import os
 import shutil
 from datetime import datetime
-
 from pathlib import Path
-from whisply.transcription import TranscriptionHandler
-from whisply import little_helper, models
 
 CSS = """
 h1 {
@@ -137,6 +134,9 @@ def get_device() -> str:
     return device
 
 def transcribe(file, model, device, language, options, hf_token, sub_length):
+    from whisply.transcription import TranscriptionHandler
+    from whisply import little_helper, models
+
     if not options:
         options = []
     annotate = 'Annotate Speakers' in options
@@ -265,6 +265,7 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
                     handler.model_provided,
                     implementation='insane-whisper'
                 )
+                print(f'[bold]→ Using {handler.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{handler.model}"')
                 result_data = handler.transcribe_with_insane_whisper(filepath)
 
             elif handler.device in ['cpu', 'cuda:0']:
@@ -273,12 +274,14 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
                         handler.model_provided,
                         implementation='whisperx'
                     )
+                    print(f'[bold]→ Using {handler.device.upper()} and whisper🆇  with model "{handler.model}"')
                     result_data = handler.transcribe_with_whisperx(filepath)
                 else:
                     handler.model = models.set_supported_model(
                         handler.model_provided,
                         implementation='faster-whisper'
                     )
+                    print(f'[bold]→ Using {handler.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{handler.model}"')
                     result_data = handler.transcribe_with_faster_whisper(filepath)
                     
             # Update progress

@@ -88,7 +88,7 @@ class TranscriptionHandler:
     def __init__(
         self, 
         base_dir='./transcriptions', 
-        model='large-v2', 
+        model='large-v3-turbo', 
         device='cpu', 
         file_language=None, 
         annotate=False, 

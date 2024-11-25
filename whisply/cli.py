@@ -127,7 +127,7 @@ def main(
         help="Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4).",
     ),
     model: str = typer.Option(
-        "large-v2",
+        "large-v3-turbo",
         "--model",
         "-m",
         help='Whisper model to use (List models via --list_models).',
