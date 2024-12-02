@@ -321,7 +321,10 @@ def set_output_dir(filepath: Path, base_dir: Path) -> None:
     ensure_dir(output_dir)
     return output_dir
 
-def create_text_with_speakers(transcription_dict: dict) -> dict:
+def create_text_with_speakers(
+    transcription_dict: dict, 
+    delimiter: str = '.'
+    ) -> dict:
     """
     Iterates through all chunks of each language and creates the complete text with 
     speaker labels inserted when there is a speaker change.
@@ -345,7 +348,7 @@ def create_text_with_speakers(transcription_dict: dict) -> dict:
             for word_info in words:
                 speaker = word_info.get('speaker')
                 word = word_info.get('word', '')
-                start_timestamp = format_time(word_info.get('start'), delimiter=',')
+                start_timestamp = format_time(word_info.get('start'), delimiter)
                 
                 # Insert speaker label if a speaker change is detected
                 if speaker != current_speaker:
