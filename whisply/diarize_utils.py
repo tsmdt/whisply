@@ -3,12 +3,13 @@
 import requests
 import torch
 import numpy as np
-from typing import TypedDict
 from torchaudio import functional as F
 from pyannote.audio import Pipeline
 from transformers.pipelines.audio_utils import ffmpeg_read
-from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
+from rich.progress import Progress, TimeElapsedColumn, SpinnerColumn, TextColumn
 import sys
+
+from whisply import little_helper
 
 # Code lifted from https://github.com/huggingface/speechbox/blob/main/src/speechbox/diarize.py
 # and from https://github.com/m-bain/whisperX/blob/main/whisperx/diarize.py
@@ -162,9 +163,10 @@ def diarize(outputs, **kwargs):
     diarization_pipeline.to(torch.device("mps"))
 
     with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(style="bright_yellow", pulse_style="bright_cyan"),
-            TimeElapsedColumn(),
+        SpinnerColumn(),
+        TimeElapsedColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True
     ) as progress:
         progress.add_task(description=kwargs['description'], total=None)
 

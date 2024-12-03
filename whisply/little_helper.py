@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 from typing import Callable, Any, List
 from rich import print
-from rich.progress import Progress, TimeElapsedColumn, BarColumn, TextColumn
+from rich.progress import Progress, TimeElapsedColumn, TextColumn, SpinnerColumn
 from whisply import download_utils
 
 # Set logging configuration
@@ -44,14 +44,14 @@ class FilePathProcessor:
                     self.filepaths.append(downloaded_path)
                 else:
                     logging.error(f"Failed to download URL: {filepath}")
-                    print(f"[bold]→ Failed to download URL: {filepath}")
+                    print(f"→ Failed to download URL: {filepath}")
                 return  
 
             # Handle .list file
             elif path.suffix.lower() == '.list':
                 if not path.is_file():
                     logging.error(f'The .list file "{path}" does not exist or is not a file.')
-                    print(f'[bold]→ The .list file "{path}" does not exist or is not a file.')
+                    print(f'→ The .list file "{path}" does not exist or is not a file.')
                     return
                 
                 logging.info(f"Processing .list file: {path}")
@@ -72,7 +72,7 @@ class FilePathProcessor:
                             if downloaded_path:
                                 self.filepaths.append(downloaded_path)
                             else:
-                                print(f'[bold]→ Failed to download URL: {lpath}')
+                                print(f'→ Failed to download URL: {lpath}')
                         else:
                             self._process_path(lpath)
                 return
@@ -95,7 +95,7 @@ class FilePathProcessor:
         # Final check to ensure there are files to process
         if not self.filepaths:
             logging.warning(f'No valid files found for processing. Please check the provided path: "{filepath}".')
-            print(f'[bold]→ No valid files found for processing. Please check the provided path: "{filepath}".')
+            print(f'→ No valid files found for processing. Please check the provided path: "{filepath}".')
         else:
             logging.info(f"Total valid files to process: {len(self.filepaths)}")
 
@@ -112,7 +112,7 @@ class FilePathProcessor:
                 self.filepaths.append(normalized_path)
             else:
                 logging.warning(f'File "{path}" has unsupported format and will be skipped.')
-                print(f'[bold]→ File "{path}" has unsupported format and will be skipped.')
+                print(f'→ File "{path}" has unsupported format and will be skipped.')
         elif path.is_dir():
             logging.info(f"Processing directory: {path}")
             for file_format in self.file_formats:
@@ -123,7 +123,7 @@ class FilePathProcessor:
                         self.filepaths.append(normalized_path)
         else:
             logging.error(f'Path "{path}" does not exist or is not accessible.')
-            print(f'[bold]→ Path "{path}" does not exist or is not accessible.')
+            print(f'→ Path "{path}" does not exist or is not accessible.')
 
     def _normalize_filepath(self, filepath: Path) -> Path:
         """
@@ -183,13 +183,13 @@ class OutputWriter:
     def _save_file(self, content: str, filepath: Path, description: str, log_message: str) -> None:
         with open(filepath, 'w', encoding='utf-8') as file:
             file.write(content)
-        print(f'[bold]→ Saved {description}:[/bold] {filepath.relative_to(self.cwd)}')
+        print(f'[blue1]→ Saved {description}: [bold]{filepath.relative_to(self.cwd)}')
         logger.info(f'{log_message} {filepath}')
 
     def save_json(self, result: dict, filepath: Path) -> None:
         with open(filepath, 'w', encoding='utf-8') as fout:
             json.dump(result, fout, indent=4)
-        print(f'[bold]→ Saved .json:[/bold] {filepath.relative_to(self.cwd)}')
+        print(f'[blue1]→ Saved .json: [bold]{filepath.relative_to(self.cwd)}')
         logger.info(f"Saved .json to {filepath}")
 
     def save_txt(self, transcription: dict, filepath: Path) -> None:
@@ -540,7 +540,7 @@ def check_file_format(
             audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
             
             if not audio_streams:
-                raise ValueError(f"[bold]→ No audio stream found for {filepath}. Please check if the file you have provided contains audio content.")
+                raise ValueError(f"→ No audio stream found for {filepath}. Please check if the file you have provided contains audio content.")
             
             audio_stream = audio_streams[0]
             codec_name = audio_stream.get('codec_name')
@@ -564,15 +564,15 @@ def check_file_format(
                     converted = True
                 except Exception as e:
                     raise RuntimeError(
-                        f"[bold]→ An error occurred while converting {filepath}: {e}"
+                        f"→ An error occurred while converting {filepath}: {e}"
                         )
             else:
                 # If already in correct format, use the original file
                 target_filepath = filepath
             
         except ffmpeg.Error as e:
-            print(f"[bold]→ Error running ffprobe: {e}")
-            print(f"[bold]→ You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
+            print(f"→ Error running ffprobe: {e}")
+            print(f"→ You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
     
     try:
         # Load the audio file into a NumPy array
@@ -610,9 +610,9 @@ def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
     Helper function to run a task with a progress bar.
     """
     with Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(style="bright_yellow", pulse_style="bright_cyan"),
+        SpinnerColumn(),
         TimeElapsedColumn(),
+        TextColumn("[progress.description]{task.description}")
     ) as progress:
         progress.add_task(description, total=None)
         return task()
