@@ -7,6 +7,7 @@ from rich import print
 
 from whisply import little_helper, models
 from whisply.little_helper import FilePathProcessor, OutputWriter
+from whisply.post_correction import Corrections
 
 # Set logging configuration
 logging.basicConfig(filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
@@ -88,7 +89,7 @@ class TranscriptionHandler:
     def __init__(
         self, 
         base_dir='./transcriptions', 
-        model='large-v2', 
+        model='large-v3-turbo', 
         device='cpu', 
         file_language=None, 
         annotate=False, 
@@ -98,6 +99,7 @@ class TranscriptionHandler:
         translate=False, 
         verbose=False,
         del_originals=False,
+        corrections=Corrections,
         export_formats='all'
     ):
         self.base_dir = little_helper.ensure_dir(Path(base_dir))
@@ -114,6 +116,7 @@ class TranscriptionHandler:
         self.sub_length = sub_length
         self.verbose = verbose
         self.del_originals = del_originals
+        self.corrections = corrections
         self.export_formats = export_formats
         self.metadata = self._collect_metadata()
         self.filepaths = []
@@ -380,7 +383,7 @@ class TranscriptionHandler:
         
         # Print transcription if verbose
         if self.verbose:
-            print(f"[bold]{result['transcriptions'][self.file_language]['text']}")
+            print(f"{result['transcriptions'][self.file_language]['text']}")
         
         # Translation task (to English)
         if self.translate and self.file_language != 'en':
@@ -396,7 +399,7 @@ class TranscriptionHandler:
             result['transcriptions']['en'] = translation_result
             
             if self.verbose:
-                print(f"[bold]{result['transcriptions']['en']['text']}")
+                print(f"{result['transcriptions']['en']['text']}")
 
         # Create full transcription with speaker annotation
         result = little_helper.create_text_with_speakers(result)
@@ -762,10 +765,12 @@ class TranscriptionHandler:
             }
 
             # Save results
-            result['written_files'] = OutputWriter().save_results(
-                result=result,
-                export_formats=self.export_formats
-                )
+            result['written_files'] = OutputWriter(
+                corrections=self.corrections
+                ).save_results(
+                    result=result,
+                    export_formats=self.export_formats
+                    )
             
             self.processed_files.append(result)
             

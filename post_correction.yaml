@@ -1,0 +1,7 @@
+# Single word corrections
+Gardamer: Gadamer
+
+# Pattern-based corrections
+patterns:
+  - pattern: 'Klaus-(Cira|Cyra|Tira)-Stiftung'
+    replacement: 'Klaus-Tschirra-Stiftung'
