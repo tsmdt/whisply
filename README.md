@@ -19,6 +19,7 @@
   - [Speaker annotation and diarization](#speaker-annotation-and-diarization)
     - [Requirements](#requirements-1)
     - [How speaker annotation works](#how-speaker-annotation-works)
+  - [Post correction](#post-correction)
   - [Batch processing](#batch-processing)
     - [Using config files for batch processing](#using-config-files-for-batch-processing)
 
@@ -136,27 +137,28 @@ $ whisply
 
  WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --files               -f        TEXT                                Path to file, folder, URL or .list to process. [default: None]                         │
-│ --output_dir          -o        DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                    │
-│ --device              -d        [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto]  │
-│ --model               -m        TEXT                                Whisper model to use (List models via --list_models). [default: large-v2]              │
-│ --lang                -l        TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]   │
-│ --annotate            -a                                            Enable speaker annotation (Saves .rttm).                                               │
-│ --hf_token            -hf       TEXT                                HuggingFace Access token required for speaker annotation. [default: None]              │
-│ --translate           -t                                            Translate transcription to English.                                                    │
-│ --subtitle            -s                                            Create subtitles (Saves .srt, .vtt and .webvtt).                                       │
-│ --sub_length                    INTEGER                             Subtitle segment length in words. [default: 5]                                         │
-│ --export              -e        [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                               │
-│ --verbose             -v                                            Print text chunks during transcription.                                                │
-│ --del_originals       -del                                          Delete original input files after file conversion. (Default: False)                    │
-│ --config                        PATH                                Path to configuration file. [default: None]                                            │
-│ --list_filetypes                                                    List supported audio and video file types.                                             │
-│ --list_models                                                       List available models.                                                                 │
-│ --install-completion                                                Install completion for the current shell.                                              │
-│ --show-completion                                                   Show completion for the current shell, to copy it or customize the installation.       │
-│ --help                                                              Show this message and exit.                                                            │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --files               -f         TEXT                                Path to file, folder, URL or .list to process. [default: None]                         │
+│ --output_dir          -o         DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                    │
+│ --device              -d         [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto]  │
+│ --model               -m         TEXT                                Whisper model to use (List models via --list_models). [default: large-v3-turbo]        │
+│ --lang                -l         TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]   │
+│ --annotate            -a                                             Enable speaker annotation (Saves .rttm).                                               │
+│ --hf_token            -hf        TEXT                                HuggingFace Access token required for speaker annotation. [default: None]              │
+│ --translate           -t                                             Translate transcription to English.                                                    │
+│ --subtitle            -s                                             Create subtitles (Saves .srt, .vtt and .webvtt).                                       │
+│ --sub_length                     INTEGER                             Subtitle segment length in words. [default: 5]                                         │
+│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                               │
+│ --verbose             -v                                             Print text chunks during transcription.                                                │
+│ --del_originals       -del                                           Delete original input files after file conversion. (Default: False)                    │
+│ --config                         PATH                                Path to configuration file. [default: None]                                            │
+│ --post_correction     -post      PATH                                Path to YAML file for post-correction. [default: None]                                 │
+│ --list_filetypes                                                     List supported audio and video file types.                                             │
+│ --list_models                                                        List available models.                                                                 │
+│ --install-completion                                                 Install completion for the current shell.                                              │
+│ --show-completion                                                    Show completion for the current shell, to copy it or customize the installation.       │
+│ --help                                                               Show this message and exit.                                                            │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### App
@@ -197,6 +199,24 @@ Out of the box `whisperX` will not provide timestamps for words containing only 
 
 Refer to the [whisperX GitHub page](https://github.com/m-bain/whisperX) for more information.
 
+### Post correction
+
+The `--post_correction` option allows you to correct various transcription errors that you may find in your files. The option takes as argument a `.yaml` file with the following structure:
+
+```yaml
+# Single word corrections
+Gardamer: Gadamer
+
+# Pattern-based corrections
+patterns:
+  - pattern: 'Klaus-(Cira|Cyra|Tira)-Stiftung'
+    replacement: 'Klaus-Tschirra-Stiftung'
+```
+
+- **Single word corrections**: matches single words → `wrong word`: `correct word`
+- **Pattern-based corrections**: matches patterns → `(Cira|Cyra|Tira)` will look for `Klaus-Cira-Stiftung`, `Klaus-Cyra-Stiftung` and / or `Klaus-Tira-Stiftung` and replaces it with `Klaus-Tschirra-Stiftung`
+
+Post correction will be applied to **all** export file formats you choose.
 
 ### Batch processing
 
@@ -231,5 +251,7 @@ You can provide a `.json` config file by using the `--config` option which makes
     "sub_length": 10,                          # Length of each subtitle block in number of words
     "export": "txt",                           # Export .txts only
     "verbose": false                           # Print transcription segments while processing 
+    "del_originals": false,                    # Delete original input files after file conversion
+    "post_correction": "my_corrections.yaml"   # Apply post correction with specified patterns in .yaml
 }
 ```

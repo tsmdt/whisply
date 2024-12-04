@@ -10,5 +10,7 @@
     "subtitle": false,
     "sub_length": 10,
     "export": "txt",
-    "verbose": false
+    "verbose": false,
+    "del_originals": false,
+    "post_correction": "my_corrections.yaml"
 }

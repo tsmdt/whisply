@@ -7,10 +7,11 @@ from rich import print
 
 from whisply import little_helper, models
 from whisply.little_helper import FilePathProcessor, OutputWriter
+from whisply.post_correction import Corrections
 
 # Set logging configuration
 logging.basicConfig(filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
-                    level=logging.DEBUG, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
+                    level=logging.INFO, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
 
 class TranscriptionHandler:
     """
@@ -98,6 +99,7 @@ class TranscriptionHandler:
         translate=False, 
         verbose=False,
         del_originals=False,
+        corrections=Corrections,
         export_formats='all'
     ):
         self.base_dir = little_helper.ensure_dir(Path(base_dir))
@@ -114,6 +116,7 @@ class TranscriptionHandler:
         self.sub_length = sub_length
         self.verbose = verbose
         self.del_originals = del_originals
+        self.corrections = corrections
         self.export_formats = export_formats
         self.metadata = self._collect_metadata()
         self.filepaths = []
@@ -366,7 +369,7 @@ class TranscriptionHandler:
         # Run the transcription
         transcription_task = partial(whisperx_task, task='transcribe', language=self.file_language)
         transcription_result = little_helper.run_with_progress(
-            description=f"[cyan]→ Transcribing ({'CUDA' if self.device == 'cuda:0' else 'CPU'}) {filepath.name}",
+            description=f"[cyan]→ Transcribing ({'CUDA' if self.device == 'cuda:0' else 'CPU'}) [bold]{filepath.name}",
             task=transcription_task
         )
         
@@ -380,13 +383,13 @@ class TranscriptionHandler:
         
         # Print transcription if verbose
         if self.verbose:
-            print(f"[bold]{result['transcriptions'][self.file_language]['text']}")
+            print(f"{result['transcriptions'][self.file_language]['text']}")
         
         # Translation task (to English)
         if self.translate and self.file_language != 'en':
             translation_task = partial(whisperx_task, task='translate', language='en')
             translation_result = little_helper.run_with_progress(
-                description=f"[dark_blue]→ Translating ({'CUDA' if self.device == 'cuda:0' else 'CPU'}) {filepath.name}",
+                description=f"[dark_blue]→ Translating ({'CUDA' if self.device == 'cuda:0' else 'CPU'}) [bold]{filepath.name}",
                 task=translation_task
             )
             
@@ -396,7 +399,7 @@ class TranscriptionHandler:
             result['transcriptions']['en'] = translation_result
             
             if self.verbose:
-                print(f"[bold]{result['transcriptions']['en']['text']}")
+                print(f"{result['transcriptions']['en']['text']}")
 
         # Create full transcription with speaker annotation
         result = little_helper.create_text_with_speakers(result)
@@ -458,7 +461,7 @@ class TranscriptionHandler:
              
             # Add progress bar and run the transcription task
             transcription_result = little_helper.run_with_progress(
-                description=f"[cyan]→ Transcribing ({self.device.upper()}) {filepath.name}",
+                description=f"[cyan]→ Transcribing ({self.device.upper()}) [bold]{filepath.name}",
                 task=transcription_task
             )
             
@@ -468,7 +471,7 @@ class TranscriptionHandler:
                     diarization_model='pyannote/speaker-diarization-3.1',
                     hf_token=self.hf_token,
                     file_name=str(filepath),
-                    description=f"[purple]→ Annotating ({self.device.upper()}) {filepath.name}",
+                    description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
                     num_speakers=None,
                     min_speakers=None,
                     max_speakers=None,
@@ -505,7 +508,7 @@ class TranscriptionHandler:
                 
                 # Add progress bar and run the translation task
                 translation_result = little_helper.run_with_progress(
-                    description=f"[dark_blue]→ Translating ({self.device.upper()}) {filepath.name}",
+                    description=f"[dark_blue]→ Translating ({self.device.upper()}) [bold]{filepath.name}",
                     task=translation_task
                 )
                 
@@ -523,7 +526,7 @@ class TranscriptionHandler:
                 result = little_helper.create_text_with_speakers(result)
 
         except {} as e:
-            print(f'[bold]{e}')
+            print(f'{e}')
         
         # Stop timing transcription
         logging.info(f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec.")
@@ -595,7 +598,7 @@ class TranscriptionHandler:
         
         # Add progress bar and run the transcription task
         chunks = little_helper.run_with_progress(
-            description=f"[cyan]→ Transcribing ({self.device.upper()}) {filepath.name}",
+            description=f"[cyan]→ Transcribing ({self.device.upper()}) [bold]{filepath.name}",
             task=transcription_task
         )
         
@@ -639,7 +642,7 @@ class TranscriptionHandler:
             
             # Add progress bar and run the translation task
             translation_chunks = little_helper.run_with_progress(
-                description=f"[dark_blue]→ Translating ({self.device.upper()}) {filepath.name}",
+                description=f"[dark_blue]→ Translating ({self.device.upper()}) [bold]{filepath.name}",
                 task=translation_task
             )
 
@@ -660,7 +663,7 @@ class TranscriptionHandler:
         """
         from faster_whisper import WhisperModel
         
-        logging.debug(f"Detecting language of file: {filepath.name}")    
+        logging.info(f"Detecting language of file: {filepath.name}")    
         
         def run_language_detection():
             lang_detection_model = WhisperModel(
@@ -672,14 +675,14 @@ class TranscriptionHandler:
             return lang, score
         
         lang, score = little_helper.run_with_progress(
-            description=f"[dark_goldenrod]→ Detecting language for {filepath.name}",
+            description=f"[dark_goldenrod]→ Detecting language for [bold]{filepath.name}",
             task=run_language_detection                  
         )    
         
         self.file_language = lang   
 
-        print(f'[bold]→ Detected language "{lang}" with probability {score:.2f}')
-        logging.debug(f'Detected language → "{lang}" with probability {score:.2f}')
+        print(f'→ Detected language "{lang}" with probability {score:.2f}')
+        logging.info(f'Detected language → "{lang}" with probability {score:.2f}')
         
     def process_files(self, files) -> None:
         """
@@ -731,7 +734,7 @@ class TranscriptionHandler:
                     self.model_provided, 
                     implementation='insane-whisper'
                 )
-                print(f'[bold]→ Using {self.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{self.model}"')
+                print(f'→ Using {self.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{self.model}"')
                 result_data = self.transcribe_with_insane_whisper(filepath)
             
             elif self.device in ['cpu', 'cuda:0']:
@@ -740,14 +743,14 @@ class TranscriptionHandler:
                         self.model_provided, 
                         implementation='whisperx'
                     )
-                    print(f'[bold]→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
+                    print(f'→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
                     result_data = self.transcribe_with_whisperx(filepath)
                 else:
                     self.model = models.set_supported_model(
                         self.model_provided, 
                         implementation='faster-whisper'
                     )
-                    print(f'[bold]→ Using {self.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"')
+                    print(f'→ Using {self.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"')
                     result_data = self.transcribe_with_faster_whisper(filepath)
 
             result = {
@@ -762,10 +765,12 @@ class TranscriptionHandler:
             }
 
             # Save results
-            result['written_files'] = OutputWriter().save_results(
-                result=result,
-                export_formats=self.export_formats
-                )
+            result['written_files'] = OutputWriter(
+                corrections=self.corrections
+                ).save_results(
+                    result=result,
+                    export_formats=self.export_formats
+                    )
             
             self.processed_files.append(result)
             
