@@ -324,33 +324,6 @@ class OutputWriter:
             log_message=log_message
         )
 
-    # def save_txt(self, transcription: dict, filepath: Path) -> None:
-    #     content = transcription['text'].strip()
-    #     self._save_file(
-    #         content=content,
-    #         filepath=filepath,
-    #         description='.txt',
-    #         log_message='Saved .txt transcript to'
-    #     )
-
-    # def save_txt_with_speaker_annotation(self, annotated_text: str, filepath: Path) -> None:
-    #     self._save_file(
-    #         content=annotated_text,
-    #         filepath=filepath,
-    #         description='.txt with speaker annotation',
-    #         log_message='Saved .txt transcription with speaker annotation →'
-    #     )
-
-    # def save_subtitles(self, text: str, type: str, filepath: Path) -> None:
-    #     description = f'.{type} subtitles'
-    #     log_message = f'Saved .{type} subtitles →'
-    #     self._save_file(
-    #         content=text,
-    #         filepath=filepath,
-    #         description=description,
-    #         log_message=log_message
-    #     )
-
     def save_rttm_annotations(
         self, 
         rttm: str, 

@@ -11,7 +11,7 @@ from whisply.post_correction import Corrections
 
 # Set logging configuration
 logging.basicConfig(filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
-                    level=logging.DEBUG, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
+                    level=logging.INFO, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
 
 class TranscriptionHandler:
     """
@@ -663,7 +663,7 @@ class TranscriptionHandler:
         """
         from faster_whisper import WhisperModel
         
-        logging.debug(f"Detecting language of file: {filepath.name}")    
+        logging.info(f"Detecting language of file: {filepath.name}")    
         
         def run_language_detection():
             lang_detection_model = WhisperModel(
@@ -682,7 +682,7 @@ class TranscriptionHandler:
         self.file_language = lang   
 
         print(f'→ Detected language "{lang}" with probability {score:.2f}')
-        logging.debug(f'Detected language → "{lang}" with probability {score:.2f}')
+        logging.info(f'Detected language → "{lang}" with probability {score:.2f}')
         
     def process_files(self, files) -> None:
         """
