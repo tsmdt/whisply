@@ -402,7 +402,8 @@ class TranscriptionHandler:
                 print(f"{result['transcriptions']['en']['text']}")
 
         # Create full transcription with speaker annotation
-        result = little_helper.create_text_with_speakers(result)
+        if self.annotate:
+            result = little_helper.create_text_with_speakers(result)
         
         logging.info(f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec.")
         
@@ -521,8 +522,8 @@ class TranscriptionHandler:
                 if self.verbose:
                     print(result['transcriptions']['en']['text'])
                     
+            # Create full transcription with speaker annotation
             if self.annotate:
-                # Create full transcription with speaker annotation
                 result = little_helper.create_text_with_speakers(result)
 
         except {} as e:
