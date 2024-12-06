@@ -210,7 +210,7 @@ Gardamer: Gadamer
 # Pattern-based corrections
 patterns:
   - pattern: 'Klaus-(Cira|Cyra|Tira)-Stiftung'
-    replacement: 'Klaus-Tschirra-Stiftung'
+    replacement: 'Klaus Tschira Stiftung'
 ```
 
 - **Single word corrections**: matches single words → `wrong word`: `correct word`
