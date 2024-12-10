@@ -363,7 +363,7 @@ class TranscriptionHandler:
             return result
         
         # Start and time transcription
-        logging.info(f"👨‍💻 Transcription started with 🆇 whisperX for {filepath.name}")
+        logging.info(f"👨‍💻 Transcription started with whisper🆇 for {filepath.name}")
         t_start = time.time()
         
         # Run the transcription
@@ -429,6 +429,22 @@ class TranscriptionHandler:
         from transformers import pipeline
         from transformers.utils import is_flash_attn_2_available
         from whisply import diarize_utils
+        
+        def annotate_speakers(transcription_result: dict) -> dict:
+            # Speaker annotation
+            annotation_result = diarize_utils.diarize(
+                transcription_result,
+                diarization_model='pyannote/speaker-diarization-3.1',
+                hf_token=self.hf_token,
+                file_name=str(filepath),
+                description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
+                num_speakers=None,
+                min_speakers=None,
+                max_speakers=None,
+            )
+            # Transform annotation_result to correct dict structure                
+            transcription_result = self.to_transcription_dict(annotation_result)
+            return transcription_result
 
         # Start and time transcription
         logging.info(f"👨‍💻 Transcription started with 🚅 insane-whisper for {filepath.name}")
@@ -458,6 +474,11 @@ class TranscriptionHandler:
                         'language': self.file_language,
                         }
                 )
+                
+                # Speaker annotation
+                if self.annotate:             
+                    transcription_result = annotate_speakers(transcription_result)
+                
                 return transcription_result
              
             # Add progress bar and run the transcription task
@@ -465,20 +486,6 @@ class TranscriptionHandler:
                 description=f"[cyan]→ Transcribing ({self.device.upper()}) [bold]{filepath.name}",
                 task=transcription_task
             )
-            
-            if self.annotate:
-                annotation_result = diarize_utils.diarize(
-                    transcription_result,
-                    diarization_model='pyannote/speaker-diarization-3.1',
-                    hf_token=self.hf_token,
-                    file_name=str(filepath),
-                    description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
-                    num_speakers=None,
-                    min_speakers=None,
-                    max_speakers=None,
-                )
-                # Transform annotation_result to correct dict structure                
-                transcription_result = self.to_transcription_dict(annotation_result)
             
             # Adjust word chunk length
             transcription_result = self.to_whisperx(transcription_result)
@@ -501,10 +508,15 @@ class TranscriptionHandler:
                         str(filepath),
                         chunk_length_s = 30,
                         batch_size = 8 if self.device in ['cpu', 'mps'] else 24,
-                        return_timestamps = True,
+                        return_timestamps = 'word',
                         generate_kwargs = {'task': 'translate',
-                                           'language': self.file_language}
+                                           'language': 'en'}
                     )
+                    
+                    # Speaker annotation
+                    if self.annotate:             
+                        translation_result = annotate_speakers(translation_result)
+                        
                     return translation_result
                 
                 # Add progress bar and run the translation task
@@ -526,7 +538,7 @@ class TranscriptionHandler:
             if self.annotate:
                 result = little_helper.create_text_with_speakers(result)
 
-        except {} as e:
+        except Exception as e:
             print(f'{e}')
         
         # Stop timing transcription

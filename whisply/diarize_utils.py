@@ -162,26 +162,18 @@ def diarize(outputs, **kwargs):
     )
     diarization_pipeline.to(torch.device("mps"))
 
-    with Progress(
-        SpinnerColumn(),
-        TimeElapsedColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True
-    ) as progress:
-        progress.add_task(description=kwargs['description'], total=None)
-
-        _, diarizer_inputs = preprocess_inputs(
-            inputs=kwargs['file_name']
-            )
-
-        segments = diarize_audio(
-            diarizer_inputs, 
-            diarization_pipeline, 
-            kwargs['num_speakers'], 
-            kwargs['min_speakers'], 
-            kwargs['max_speakers']
+    _, diarizer_inputs = preprocess_inputs(
+        inputs=kwargs['file_name']
         )
 
-        return post_process_segments_and_transcripts(
-            segments, outputs["chunks"], group_by_speaker=False
-        )
+    segments = diarize_audio(
+        diarizer_inputs, 
+        diarization_pipeline, 
+        kwargs['num_speakers'], 
+        kwargs['min_speakers'], 
+        kwargs['max_speakers']
+    )
+
+    return post_process_segments_and_transcripts(
+        segments, outputs["chunks"], group_by_speaker=False
+    )
