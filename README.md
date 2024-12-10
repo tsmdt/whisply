@@ -1,6 +1,6 @@
 # whisply
 
-[![PyPI version](https://d25lcipzij17d.cloudfront.net/badge.svg?c=eyJhbGciOiJub25lIn0.eyJiIjp7IngiOmZhbHNlLCJ0IjoidjZlIiwibCI6InB5cGkgcGFja2FnZSIsInIiOiIwLjYuMiJ9fQ&ts=1730019116)](https://badge.fury.io/py/whisply)
+[![PyPI version](https://badge.fury.io/py/whisply.svg)](https://badge.fury.io/py/whisply)
 
 <img src="https://github.com/user-attachments/assets/3a15509b-b60e-4581-af87-ecaa8e5089a3" width="25%">
 
