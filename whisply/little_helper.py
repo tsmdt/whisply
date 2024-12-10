@@ -177,7 +177,7 @@ class OutputWriter:
     """
     Class for writing various output formats to disk.
     """
-    def __init__(self, corrections: Corrections):
+    def __init__(self, corrections: Corrections = Corrections()):
         self.cwd = Path.cwd()
         self.corrections = corrections
         self.compiled_simple_patterns = self._compile_simple_patterns()
