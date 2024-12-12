@@ -125,24 +125,25 @@ class FilePathProcessor:
         else:
             logging.error(f'Path "{path}" does not exist or is not accessible.')
             print(f'→ Path "{path}" does not exist or is not accessible.')
-
+             
     def _normalize_filepath(self, filepath: Path) -> Path:
         """
-        Normalizes the filepath. This function can be expanded based on specific normalization needs.
-        """    
-        # Normalize title
+        Normalizes the filepath by replacing non-word characters with underscores,
+        collapsing multiple underscores into one, and removing leading/trailing underscores.
+        """
         new_filename = re.sub(r'\W+', '_', filepath.stem)
+        new_filename = new_filename.strip('_')
+        new_filename = re.sub(r'_+', '_', new_filename)
         
-        if new_filename.startswith('_'):
-            new_filename = new_filename[1:]
-        if new_filename.endswith('_'):
-            new_filename = new_filename[:-1]
-
-        # Construct new path and rename
-        new_path = filepath.parent / f"{new_filename}{filepath.suffix.lower()}"
+        suffix = filepath.suffix.lower()
+        
+        # Construct the new path
+        new_path = filepath.parent / f"{new_filename}{suffix}"
+        
+        # Rename the file
         filepath.rename(new_path)
-        
-        return filepath.resolve()
+
+        return new_path.resolve()
 
     def _filter_converted_files(self):
         """
