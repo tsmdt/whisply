@@ -171,10 +171,6 @@ class FilePathProcessor:
             logging.info(f"Removed {removed_count} files already converted.")
         self.filepaths = filtered_filepaths
 
-def load_config(config: json) -> dict:
-    with open(config, 'r', encoding='utf-8') as file:
-        return json.load(file)
-
 def ensure_dir(dir: Path) -> None:
     if not dir.exists():
         dir.mkdir(parents=True)
@@ -184,124 +180,6 @@ def set_output_dir(filepath: Path, base_dir: Path) -> None:
     output_dir = base_dir / filepath.stem
     ensure_dir(output_dir)
     return output_dir
-
-def format_time(seconds, delimiter=',') -> str:
-    """
-    Function for time conversion.
-    """
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    ms = int((seconds - int(seconds)) * 1000)
-    
-    return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
-
-def create_subtitles(transcription_dict: dict, type: str = 'srt', result: dict = None) -> str:
-    """
-    Converts a transcription dictionary into subtitle format (.srt or .webvtt).
-
-    Args:
-        transcription_dict (dict): Dictionary containing transcription data with 'chunks'.
-        sub_length (int, optional): Maximum duration in seconds for each subtitle block.
-        type (str, optional): Subtitle format, either 'srt' or 'webvtt'. Default is 'srt'.
-
-    Returns:
-        str: Formatted subtitle text in the specified format.
-    """
-    subtitle_text = ''
-    seg_id = 0
-    
-    for chunk in transcription_dict['chunks']:
-        start_time = chunk['timestamp'][0]
-        end_time = chunk['timestamp'][1]
-        text = chunk['text'].replace('’', '\'')
-        
-        # Create .srt subtitles
-        if type == 'srt':
-            start_time_str = format_time(start_time, delimiter=',')
-            end_time_str = format_time(end_time, delimiter=',')
-            seg_id += 1
-            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
-        
-        # Create .webvtt subtitles    
-        elif type in ['webvtt', 'vtt']:
-            start_time_str = format_time(start_time, delimiter='.')
-            end_time_str = format_time(end_time, delimiter='.')
-
-            if seg_id == 0:
-                subtitle_text += f"WEBVTT {Path(result['output_filepath']).stem}\n\n"
-                
-                if type == 'vtt':
-                    subtitle_text += 'NOTE transcribed with whisply\n\n'
-                    subtitle_text += f"NOTE media: {Path(result['input_filepath']).absolute()}\n\n"
-                
-            seg_id += 1
-            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
-        
-    return subtitle_text
-
-def dict_to_rttm(result: dict) -> dict:
-    """
-    Converts a transcription dictionary to RTTM file format.
-    """
-    file_id = result.get('input_filepath', 'unknown_file')
-    file_id = Path(file_id).stem
-    rttm_dict = {}
-
-    # Iterate over each available language
-    for lang, transcription in result.get('transcription', {}).items():
-        lines = []
-        current_speaker = None
-        speaker_start_time = None
-        speaker_end_time = None
-
-        chunks = transcription.get('chunks', [])
-
-        # Collect all words from chunks
-        all_words = []
-        for chunk in chunks:
-            words = chunk.get('words', [])
-            all_words.extend(words)
-
-        # Sort all words by their start time
-        all_words.sort(key=lambda w: w.get('start', 0.0))
-
-        for word_info in all_words:
-            speaker = word_info.get('speaker', 'SPEAKER_00')
-            word_start = word_info.get('start', 0.0)
-            word_end = word_info.get('end', word_start)
-
-            if speaker != current_speaker:
-                # If there is a previous speaker segment, write it to the RTTM
-                if current_speaker is not None:
-                    duration = speaker_end_time - speaker_start_time
-                    rttm_line = (
-                        f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
-                        f"<NA> <NA> {current_speaker} <NA>"
-                    )
-                    lines.append(rttm_line)
-
-                # Start a new speaker segment
-                current_speaker = speaker
-                speaker_start_time = word_start
-                speaker_end_time = word_end
-            else:
-                # Extend the current speaker segment
-                speaker_end_time = max(speaker_end_time, word_end)
-
-        # Write the last speaker segment to the RTTM
-        if current_speaker is not None:
-            duration = speaker_end_time - speaker_start_time
-            rttm_line = (
-                f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
-                f"<NA> <NA> {current_speaker} <NA>"
-            )
-            lines.append(rttm_line)
-
-        rttm_content = "\n".join(lines)
-        rttm_dict[lang] = rttm_content
-
-    return rttm_dict
 
 def return_valid_fileformats() -> list[str]:
     return [
@@ -395,7 +273,8 @@ def check_file_format(
             
         except ffmpeg.Error as e:
             print(f"→ Error running ffprobe: {e}")
-            print(f"→ You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
+            print(f"→ You may have provided an unsupported file type.\
+Please check 'whisply --list_formats' for all supported formats.")
     
     try:
         # Load the audio file into a NumPy array
@@ -427,6 +306,21 @@ def convert_file_format(old_filepath: str, new_filepath: str):
         .run(quiet=True,
              overwrite_output=True)
     )
+
+def load_config(config: json) -> dict:
+    with open(config, 'r', encoding='utf-8') as file:
+        return json.load(file)
+
+def format_time(seconds, delimiter=',') -> str:
+    """
+    Function for time conversion.
+    """
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds - int(seconds)) * 1000)
+    
+    return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
  
 def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
     """

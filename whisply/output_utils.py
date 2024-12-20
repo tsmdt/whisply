@@ -241,7 +241,7 @@ class OutputWriter:
                 # .srt subtitles
                 if 'srt' in export_formats:
                     fout = output_filepath.parent / f"{output_filepath.name}_{language}.srt"
-                    srt_text = little_helper.create_subtitles(
+                    srt_text = create_subtitles(
                         transcription, 
                         type='srt'
                         )
@@ -252,7 +252,7 @@ class OutputWriter:
                 if 'vtt' in export_formats or 'webvtt' in export_formats:
                     for subtitle_type in ['webvtt', 'vtt']:
                         fout = output_filepath.parent / f"{output_filepath.name}_{language}.{subtitle_type}"
-                        vtt_text = little_helper.create_subtitles(
+                        vtt_text = create_subtitles(
                             transcription, 
                             type=subtitle_type, 
                             result=result
@@ -283,7 +283,7 @@ class OutputWriter:
         # Write .rttm
         if 'rttm' in export_formats:
             # Create .rttm annotations
-            rttm_dict = little_helper.dict_to_rttm(result)
+            rttm_dict = dict_to_rttm(result)
 
             for language, rttm_annotation in rttm_dict.items():
                 fout = output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
@@ -301,3 +301,130 @@ class OutputWriter:
             self.save_json(result, filepath=fout)
 
         return written_filepaths
+
+
+def create_subtitles(
+    transcription_dict: dict, 
+    type: str = 'srt', 
+    result: dict = None
+    ) -> str:
+    """
+    Converts a transcription dictionary into subtitle format (.srt or .webvtt).
+
+    Args:
+        transcription_dict (dict): Dictionary containing transcription data 
+            with 'chunks'.
+        sub_length (int, optional): Maximum duration in seconds for each 
+            subtitle block.
+        type (str, optional): Subtitle format, either 'srt' or 'webvtt'. 
+            Default is 'srt'.
+
+    Returns:
+        str: Formatted subtitle text in the specified format.
+    """
+    subtitle_text = ''
+    seg_id = 0
+    
+    for chunk in transcription_dict['chunks']:
+        start_time = chunk['timestamp'][0]
+        end_time = chunk['timestamp'][1]
+        text = chunk['text'].replace('’', '\'')
+        
+        # Create .srt subtitles
+        if type == 'srt':
+            start_time_str = little_helper.format_time(
+                start_time, 
+                delimiter=','
+                )
+            end_time_str = little_helper.format_time(
+                end_time, 
+                delimiter=','
+                )
+            seg_id += 1
+            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
+        
+        # Create .webvtt subtitles    
+        elif type in ['webvtt', 'vtt']:
+            start_time_str = little_helper.format_time(
+                start_time, 
+                delimiter='.'
+                )
+            end_time_str = little_helper.format_time(
+                end_time, 
+                delimiter='.'
+                )
+
+            if seg_id == 0:
+                subtitle_text += f"WEBVTT {Path(result['output_filepath']).stem}\n\n"
+                
+                if type == 'vtt':
+                    subtitle_text += 'NOTE transcribed with whisply\n\n'
+                    subtitle_text += f"NOTE media: {Path(result['input_filepath']).absolute()}\n\n"
+                
+            seg_id += 1
+            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
+        
+    return subtitle_text
+
+def dict_to_rttm(result: dict) -> dict:
+    """
+    Converts a transcription dictionary to RTTM file format.
+    """
+    file_id = result.get('input_filepath', 'unknown_file')
+    file_id = Path(file_id).stem
+    rttm_dict = {}
+
+    # Iterate over each available language
+    for lang, transcription in result.get('transcription', {}).items():
+        lines = []
+        current_speaker = None
+        speaker_start_time = None
+        speaker_end_time = None
+
+        chunks = transcription.get('chunks', [])
+
+        # Collect all words from chunks
+        all_words = []
+        for chunk in chunks:
+            words = chunk.get('words', [])
+            all_words.extend(words)
+
+        # Sort all words by their start time
+        all_words.sort(key=lambda w: w.get('start', 0.0))
+
+        for word_info in all_words:
+            speaker = word_info.get('speaker', 'SPEAKER_00')
+            word_start = word_info.get('start', 0.0)
+            word_end = word_info.get('end', word_start)
+
+            if speaker != current_speaker:
+                # If there is a previous speaker segment, write it to the RTTM
+                if current_speaker is not None:
+                    duration = speaker_end_time - speaker_start_time
+                    rttm_line = (
+                        f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
+                        f"<NA> <NA> {current_speaker} <NA>"
+                    )
+                    lines.append(rttm_line)
+
+                # Start a new speaker segment
+                current_speaker = speaker
+                speaker_start_time = word_start
+                speaker_end_time = word_end
+            else:
+                # Extend the current speaker segment
+                speaker_end_time = max(speaker_end_time, word_end)
+
+        # Write the last speaker segment to the RTTM
+        if current_speaker is not None:
+            duration = speaker_end_time - speaker_start_time
+            rttm_line = (
+                f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
+                f"<NA> <NA> {current_speaker} <NA>"
+            )
+            lines.append(rttm_line)
+
+        rttm_content = "\n".join(lines)
+        rttm_dict[lang] = rttm_content
+
+    return rttm_dict

@@ -1,13 +1,12 @@
 import os
 import typer
 import warnings
-import yaml
 
 from pathlib import Path
 from enum import Enum
 from typing import Optional, List
 from rich import print
-from whisply.post_correction import Corrections
+from whisply import post_correction as post
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -102,43 +101,6 @@ def determine_export_formats(
             raise typer.Exit()
 
     return list(available_formats)
-
-def load_correction_list(filepath: str | Path) -> Corrections:
-    """
-    Load the correction dictionary and patterns from a YAML file.
-
-    :param filepath: Path to the YAML correction file.
-    :return: Corrections object containing simple and pattern-based corrections.
-    """
-    try:
-        with open(filepath, 'r') as file:
-            data = yaml.safe_load(file)
-
-        if not isinstance(data, dict):
-            raise ValueError("→ Correction file must contain a YAML dictionary.")
-
-        # Extract simple corrections
-        simple_corrections = {k: v for k, v in data.items() if k != 'patterns'}
-
-        # Extract pattern-based corrections
-        pattern_corrections = data.get('patterns', [])
-
-        # Validate patterns
-        for entry in pattern_corrections:
-            if 'pattern' not in entry or 'replacement' not in entry:
-                raise ValueError("→ Each pattern entry must contain 'pattern' and 'replacement' keys.")
-
-        return Corrections(simple=simple_corrections, patterns=pattern_corrections)
-
-    except FileNotFoundError:
-        print(f"→ Correction file not found: {filepath}")
-        return Corrections()
-    except yaml.YAMLError as e:
-        print(f"→ Error parsing YAML file: {e}")
-        return Corrections()
-    except Exception as e:
-        print(f"→ Unexpected error loading correction list: {e}")
-        return Corrections()
 
 @app.command(no_args_is_help=True)
 def main(
@@ -311,7 +273,7 @@ def main(
     
     # Load corrections if post_correction is provided
     if post_correction:
-        corrections = load_correction_list(post_correction)
+        corrections = post.load_correction_list(post_correction)
     
     # Instantiate TranscriptionHandler
     service = transcription.TranscriptionHandler(
