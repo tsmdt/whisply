@@ -137,28 +137,29 @@ $ whisply
 
  WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
 
-╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --files               -f         TEXT                                Path to file, folder, URL or .list to process. [default: None]                         │
-│ --output_dir          -o         DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                    │
-│ --device              -d         [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto]  │
-│ --model               -m         TEXT                                Whisper model to use (List models via --list_models). [default: large-v3-turbo]        │
-│ --lang                -l         TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]   │
-│ --annotate            -a                                             Enable speaker annotation (Saves .rttm).                                               │
-│ --hf_token            -hf        TEXT                                HuggingFace Access token required for speaker annotation. [default: None]              │
-│ --translate           -t                                             Translate transcription to English.                                                    │
-│ --subtitle            -s                                             Create subtitles (Saves .srt, .vtt and .webvtt).                                       │
-│ --sub_length                     INTEGER                             Subtitle segment length in words. [default: 5]                                         │
-│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                               │
-│ --verbose             -v                                             Print text chunks during transcription.                                                │
-│ --del_originals       -del                                           Delete original input files after file conversion. (Default: False)                    │
-│ --config                         PATH                                Path to configuration file. [default: None]                                            │
-│ --post_correction     -post      PATH                                Path to YAML file for post-correction. [default: None]                                 │
-│ --list_filetypes                                                     List supported audio and video file types.                                             │
-│ --list_models                                                        List available models.                                                                 │
-│ --install-completion                                                 Install completion for the current shell.                                              │
-│ --show-completion                                                    Show completion for the current shell, to copy it or customize the installation.       │
-│ --help                                                               Show this message and exit.                                                            │
-╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --files               -f         TEXT                                Path to file, folder, URL or .list to process. [default: None]                        │
+│ --output_dir          -o         DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                   │
+│ --device              -d         [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto] │
+│ --model               -m         TEXT                                Whisper model to use (List models via --list_models). [default: large-v3-turbo]       │
+│ --lang                -l         TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]  │
+│ --annotate            -a                                             Enable speaker annotation (Saves .rttm | Default: False).                             │
+│ --num_speakers        -num       INTEGER                             Number of speakers to annotate (Default: auto-detection). [default: None]             │
+│ --hf_token            -hf        TEXT                                HuggingFace Access token required for speaker annotation. [default: None]             │
+│ --subtitle            -s                                             Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                     │
+│ --sub_length                     INTEGER                             Subtitle segment length in words. [default: 5]                                        │
+│ --translate           -t                                             Translate transcription to English (Default: False).                                  │
+│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                              │
+│ --verbose             -v                                             Print text chunks during transcription (Default: False).                              │
+│ --del_originals       -del                                           Delete original input files after file conversion. (Default: False)                   │
+│ --config                         PATH                                Path to configuration file. [default: None]                                           │
+│ --post_correction     -post      PATH                                Path to YAML file for post-correction. [default: None]                                │
+│ --list_filetypes                                                     List supported audio and video file types.                                            │
+│ --list_models                                                        List available models.                                                                │
+│ --install-completion                                                 Install completion for the current shell.                                             │
+│ --show-completion                                                    Show completion for the current shell, to copy it or customize the installation.      │
+│ --help                                                               Show this message and exit.                                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### App
@@ -245,10 +246,11 @@ You can provide a `.json` config file by using the `--config` option which makes
     "model": "large-v3-turbo",                 # Whisper model to use
     "lang": null,                              # Null for auto-detection or language codes ("en", "de", ...)
     "annotate": false,                         # Annotate speakers 
+    "num_speakers": null,                      # Number of speakers of the input file (null: auto-detection)
     "hf_token": "HuggingFace Access Token",    # Your HuggingFace Access Token (needed for annotations)
-    "translate": false,                        # Translate to English
     "subtitle": false,                         # Subtitle file(s)
     "sub_length": 10,                          # Length of each subtitle block in number of words
+    "translate": false,                        # Translate to English
     "export": "txt",                           # Export .txts only
     "verbose": false                           # Print transcription segments while processing 
     "del_originals": false,                    # Delete original input files after file conversion
