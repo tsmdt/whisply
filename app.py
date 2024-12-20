@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pathlib import Path
 from whisply.transcription import TranscriptionHandler
-from whisply import little_helper, models
+from whisply import little_helper, output_utils, models
 
 CSS = """
 h1 {
@@ -297,7 +297,7 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
             }
 
             # Save results
-            result['written_files'] = little_helper.OutputWriter().save_results(
+            result['written_files'] = output_utils.OutputWriter().save_results(
                     result=result,
                     export_formats=handler.export_formats
                     )

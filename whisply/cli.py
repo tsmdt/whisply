@@ -310,7 +310,6 @@ def main(
     export_formats = determine_export_formats(export_format, annotate, subtitle)
     
     # Load corrections if post_correction is provided
-    # corrections = Corrections()
     if post_correction:
         corrections = load_correction_list(post_correction)
     

@@ -5,86 +5,101 @@ from datetime import datetime
 from functools import partial
 from rich import print
 
-from whisply import little_helper, models
-from whisply.little_helper import FilePathProcessor, OutputWriter
+from whisply import little_helper, output_utils, models
+from whisply.little_helper import FilePathProcessor
 from whisply.post_correction import Corrections
 
 # Set logging configuration
-logging.basicConfig(filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
-                    level=logging.INFO, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
+logging.basicConfig(
+    filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
+    level=logging.INFO, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s'
+    )
 
 class TranscriptionHandler:
     """
-    Handles transcription and diarization of audio / video files using various Whisper-based models.
+    Handles transcription and diarization of audio/video files using various 
+    Whisper-based models.
 
-    This class handels the transcription of input files using different implementations of OpenAI's 
-    Whisper models, including whisperX, insanely-fast-whisper, and faster-whisper. It supports features 
-    such as language detection, speaker diarization, translation, subtitle generation, and exporting 
-    transcriptions in multiple formats. The class is designed to handle single files, directories, URLs, 
-    and lists of files, ensuring flexibility and ease of use for diverse transcription needs.
+    This class leverages different implementations of OpenAI's Whisper models 
+    (whisperX, insanely-fast-whisper, faster-whisper) to transcribe audio and 
+    video files. It supports features like language detection, speaker 
+    diarization, translation, subtitle generation, and exporting transcriptions
+    in multiple formats. It is capable of processing single files, directories, 
+    URLs, and lists of files, providing flexibility for diverse transcription 
+    needs.
 
-    Parameters:
-        base_dir (str, optional): Directory to store transcription outputs. Defaults to './transcriptions'.
-        model (str, optional): The Whisper model variant to use (e.g., 'large-v2'). Defaults to 'large-v2'.
-        device (str, optional): Compute device to run the model on ('cpu', 'cuda', etc.). Defaults to 'cpu'.
-        file_language (str, optional): Language of the input audio. If not provided, language detection is 
-        performed.
-        annotate (bool, optional): Enable speaker diarization. Defaults to False.
-        hf_token (str, optional): Hugging Face token for accessing restricted models or features.
-        subtitle (bool, optional): Generate subtitles with word-level timestamps. Defaults to False.
-        sub_length (int, optional): Maximum number of words per subtitle chunk. Required if subtitle is True.
-        translate (bool, optional): Translate transcription to English if the original language is different. 
-        Defaults to False.
-        verbose (bool, optional): Enable detailed logging and output. Defaults to False.
-        export_formats (str or list, optional): Formats to export the transcription results (e.g., 'json', 'srt'). 
-        Defaults to 'all'.
+    Args:
+        base_dir (str, optional): Directory to store transcription outputs. 
+            Defaults to './transcriptions'.
+        model (str, optional): Whisper model variant to use (e.g., 'large-v2'). 
+            Defaults to 'large-v3-turbo'.
+        device (str, optional): Compute device ('cpu', 'cuda', etc.). 
+            Defaults to 'cpu'.
+        file_language (str, optional): Language of the input audio. 
+            If not provided, language detection is performed.
+        annotate (bool, optional): Enable speaker diarization. 
+            Defaults to False.
+        hf_token (str, optional): Hugging Face token for accessing restricted  
+            models or features.
+        subtitle (bool, optional): Generate subtitles with word-level timestamps. 
+            Defaults to False.
+        sub_length (int, optional): Maximum number of words per subtitle chunk. 
+            Required if subtitle is True.
+        translate (bool, optional): Translate transcription to English if the 
+            original language is different. Defaults to False.
+        verbose (bool, optional): Enable detailed logging and output. 
+            Defaults to False.
+        export_formats (str or list, optional): Formats to export transcriptions 
+            (e.g., 'json', 'srt'). Defaults to 'all'.
 
     Attributes:
-        base_dir (Path): Resolved base directory for storing transcriptions.
-        file_formats (list): Supported audio file formats.
+        base_dir (Path): Directory for storing transcriptions.
         device (str): Compute device in use.
-        file_language (str or None): Detected or specified language of the audio file.
+        file_language (str or None): Detected or specified language of the 
+            audio.
         annotate (bool): Indicates if speaker diarization is enabled.
         translate (bool): Indicates if translation is enabled.
-        hf_token (str or None): Hugging Face token.
         subtitle (bool): Indicates if subtitle generation is enabled.
-        sub_length (int or None): Maximum number of words per subtitle chunk.
         verbose (bool): Indicates if verbose mode is active.
-        export_formats (str or list): Formats selected for exporting transcriptions.
-        metadata (dict): Collected metadata about the transcription settings.
-        filepaths (list): List of audio file paths to be processed.
-        output_dir (Path or None): Directory where the current transcription output is stored.
-        processed_files (list): List of dictionaries containing processed file information and results.
+        export_formats (str or list): Selected formats for exporting 
+            transcriptions.
+        processed_files (list): List of processed file information and results.
 
     Methods:
         get_filepaths(filepath: str):
-            Retrieves and validates file paths from a single file, directory, URL, or a list file.
+            Retrieves and validates file paths from various input types.
         
-        detect_language(file: Path) -> str:
-            Detects the language of the given audio file using the specified Whisper model.
+        detect_language(file: Path, audio_array) -> str:
+            Detects the language of the given audio file.
         
         process_files(files: list):
-            Processes a list of audio files for transcription, handling conversion, language detection, 
-            transcription, optional translation, and exporting results.
+            Processes a list of audio files for transcription and diarization.
         
         transcribe_with_whisperx(filepath: Path) -> dict:
-            Transcribes an audio file using the whisperX implementation, providing word-level timestamps 
-            and optional speaker annotation.
+            Transcribes an audio file using the whisperX implementation.
         
         transcribe_with_insane_whisper(filepath: Path) -> dict:
-            Transcribes an audio file using the insanely-fast-whisper implementation for rapid automatic speech recognition.
+            Transcribes an audio file using the insanely-fast-whisper 
+            implementation.
         
-        transcribe_with_faster_whisper(filepath: Path, num_workers: int = 1) -> dict:
-            Transcribes an audio file using the faster-whisper implementation, supporting multi-worker processing.
+        transcribe_with_faster_whisper(filepath: Path, num_workers: int = 1) 
+            -> dict:
+            Transcribes an audio file using the faster-whisper implementation.
         
         adjust_word_chunk_length(result: dict) -> dict:
-            Adjusts the transcription result by splitting text into chunks based on a maximum word count.
+            Splits transcription text into chunks based on a maximum word 
+            count.
         
         to_transcription_dict(insanely_annotation: list[dict]) -> dict:
-            Converts speaker-annotated transcription results into a standardized dictionary format.
+            Converts speaker-annotated results into a standardized dictionary.
         
         to_whisperx(transcription_result: dict) -> dict:
-            Normalizes transcription results to the whisperX dictionary structure.
+            Normalizes transcription results to the whisperX format.
+        
+        create_text_with_speakers(transcription_dict: dict, 
+            delimiter: str = '.') -> dict:
+            Inserts speaker labels into the transcription text upon speaker 
+            changes.
     """
     def __init__(
         self, 
@@ -235,6 +250,51 @@ class TranscriptionHandler:
             ]
         }
         return result
+    
+    def create_text_with_speakers(
+        self,
+        transcription_dict: dict, 
+        delimiter: str = '.'
+        ) -> dict:
+        """
+        Iterates through all chunks of each language and creates the complete text with 
+        speaker labels inserted when there is a speaker change.
+
+        Args:
+            transcription_dict (dict): The dictionary containing transcription data.
+
+        Returns:
+            dict: A dictionary mapping each language to its formatted text with speaker labels.
+        """    
+        transcriptions = transcription_dict.get('transcriptions', {})
+        
+        for lang, lang_data in transcriptions.items():
+            text = ""
+            current_speaker = None
+            chunks = lang_data.get('chunks', [])
+            
+            for chunk in chunks:
+                words = chunk.get('words', [])
+                
+                for word_info in words:
+                    speaker = word_info.get('speaker')
+                    word = word_info.get('word', '')
+                    start_timestamp = little_helper.format_time(
+                        word_info.get('start'), 
+                        delimiter
+                        )
+                    
+                    # Insert speaker label if a speaker change is detected
+                    if speaker != current_speaker:
+                        text += f"\n[{start_timestamp}] [{speaker}] "
+                        current_speaker = speaker
+                    
+                    # Append the word with a space
+                    text += word + " "
+            
+            transcription_dict['transcriptions'][lang]['text_with_speaker_annotation'] = text.strip()
+        
+        return transcription_dict
 
     def transcribe_with_whisperx(self, filepath: Path) -> dict:
         """
@@ -440,7 +500,7 @@ class TranscriptionHandler:
                 print(f"{result['transcriptions']['en']['text']}")
 
         # Create full transcription with speaker annotation
-        result = little_helper.create_text_with_speakers(result)
+        result = self.create_text_with_speakers(result)
         
         logging.info(f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec.")
         
@@ -569,7 +629,7 @@ class TranscriptionHandler:
                     
             if self.annotate:
                 # Create full transcription with speaker annotation
-                result = little_helper.create_text_with_speakers(result)
+                result = self.create_text_with_speakers(result)
 
         except {} as e:
             print(f'{e}')
@@ -811,7 +871,7 @@ class TranscriptionHandler:
             }
 
             # Save results
-            result['written_files'] = OutputWriter(
+            result['written_files'] = output_utils.OutputWriter(
                 corrections=self.corrections
                 ).save_results(
                     result=result,
