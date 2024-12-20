@@ -177,11 +177,18 @@ class OutputWriter:
     """
     Class for writing various output formats to disk.
     """
-    def __init__(self, corrections: Corrections):
+    def __init__(
+        self, 
+        corrections: Corrections = None
+        ):
         self.cwd = Path.cwd()
         self.corrections = corrections
-        self.compiled_simple_patterns = self._compile_simple_patterns()
-        self.compiled_regex_patterns = self._compile_regex_patterns()
+        self.compiled_simple_patterns = (
+            self._compile_simple_patterns() if self.corrections else {}
+            )
+        self.compiled_regex_patterns = (
+            self._compile_regex_patterns() if self.corrections else []
+            )
     
     def _compile_simple_patterns(self) -> List[Tuple[re.Pattern, str]]:
         """
@@ -209,9 +216,11 @@ class OutputWriter:
         for entry in self.corrections.patterns:
             original_pattern = entry['pattern']
             replacement = entry['replacement']
+            
             # Wrap patterns with word boundaries and non-capturing group
             new_pattern = r'\b(?:' + original_pattern + r')\b'
             regex = re.compile(new_pattern, flags=re.IGNORECASE)
+            
             patterns.append((regex, replacement))
             logger.debug(
                 f"Compiled pattern-based regex: '{new_pattern}' → '{replacement}'"

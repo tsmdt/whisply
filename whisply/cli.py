@@ -181,7 +181,13 @@ def main(
         False,
         "--annotate",
         "-a",
-        help="Enable speaker annotation (Saves .rttm).",
+        help="Enable speaker annotation (Saves .rttm | Default: False).",
+    ),
+    num_speakers: Optional[int] = typer.Option(
+        None,
+        "--num_speakers",
+        "-num",
+        help="Number of speakers to annotate (Default: auto-detection).",
     ),
     hf_token: Optional[str] = typer.Option(
         None,
@@ -189,22 +195,22 @@ def main(
         "-hf",
         help="HuggingFace Access token required for speaker annotation.",
     ),
-    translate: bool = typer.Option(
-        False,
-        "--translate",
-        "-t",
-        help="Translate transcription to English.",
-    ),
     subtitle: bool = typer.Option(
         False,
         "--subtitle",
         "-s",
-        help="Create subtitles (Saves .srt, .vtt and .webvtt).",
+        help="Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).",
     ),
     sub_length: int = typer.Option(
         5,
         "--sub_length",
         help="Subtitle segment length in words."
+    ),
+    translate: bool = typer.Option(
+        False,
+        "--translate",
+        "-t",
+        help="Translate transcription to English (Default: False).",
     ),
     export_format: ExportFormats = typer.Option(
         ExportFormats.ALL,
@@ -216,7 +222,7 @@ def main(
         False,
         "--verbose",
         "-v",
-        help="Print text chunks during transcription.",
+        help="Print text chunks during transcription (Default: False).",
     ),
     del_originals: bool = typer.Option(
         False,
@@ -260,6 +266,7 @@ def main(
         model = config_data.get("model", model)
         lang = config_data.get("lang", lang)
         annotate = config_data.get("annotate", annotate)
+        num_speakers = config_data.get("num_speakers", num_speakers)
         translate = config_data.get("translate", translate)
         hf_token = config_data.get("hf_token", hf_token)
         subtitle = config_data.get("subtitle", subtitle)
@@ -303,7 +310,7 @@ def main(
     export_formats = determine_export_formats(export_format, annotate, subtitle)
     
     # Load corrections if post_correction is provided
-    corrections = Corrections()
+    # corrections = Corrections()
     if post_correction:
         corrections = load_correction_list(post_correction)
     
@@ -314,13 +321,14 @@ def main(
         model=model,
         file_language=lang, 
         annotate=annotate, 
+        num_speakers=num_speakers,
         translate=translate,
         hf_token=hf_token, 
         subtitle=subtitle,
         sub_length=sub_length,
         verbose=verbose,
         del_originals=del_originals,
-        corrections=corrections,
+        corrections=corrections if post_correction else None,
         export_formats=export_formats
     )
     # Process files
