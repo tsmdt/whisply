@@ -6,16 +6,55 @@ import ffmpeg
 import validators
 import numpy as np
 
+from enum import Enum
 from pathlib import Path
-from typing import Callable, Any, List, Dict, Tuple
+from typing import Callable, Any, List
 from rich import print
 from rich.progress import Progress, TimeElapsedColumn, TextColumn, SpinnerColumn
 from whisply import download_utils
-from whisply.post_correction import Corrections
 
 # Set logging configuration
 logger = logging.getLogger('little_helper')
 logger.setLevel(logging.INFO)
+
+
+class DeviceChoice(str, Enum):
+    AUTO = 'auto'
+    CPU = 'cpu'
+    GPU = 'gpu'
+    MPS = 'mps'
+    
+    
+def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
+    """
+    Determine the computation device based on user preference and 
+    availability.
+    """
+    import torch
+    
+    if device == DeviceChoice.AUTO:
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+    elif device == DeviceChoice.GPU:
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        else:
+            device = 'cpu'
+    elif device == DeviceChoice.MPS:
+        if torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+    elif device == DeviceChoice.CPU:
+        device = 'cpu'
+    else:
+        device = 'cpu'
+    return device
+
 
 class FilePathProcessor:
     """
@@ -173,282 +212,6 @@ class FilePathProcessor:
             logging.info(f"Removed {removed_count} files already converted.")
         self.filepaths = filtered_filepaths
 
-
-class OutputWriter:
-    """
-    Class for writing various output formats to disk.
-    """
-    def __init__(self, corrections: Corrections = Corrections()):
-        self.cwd = Path.cwd()
-        self.corrections = corrections
-        self.compiled_simple_patterns = self._compile_simple_patterns()
-        self.compiled_regex_patterns = self._compile_regex_patterns()
-    
-    def _compile_simple_patterns(self) -> List[Tuple[re.Pattern, str]]:
-        """
-        Pre-compile regex patterns for simple word corrections.
-        Returns a list of tuples containing compiled patterns and their replacements.
-        """
-        patterns = []
-        for wrong, correct in self.corrections.simple.items():
-            # Wrap simple corrections with word boundaries
-            pattern = re.compile(
-                r'\b{}\b'.format(re.escape(wrong)), flags=re.IGNORECASE
-                )
-            patterns.append((pattern, correct))
-            logger.debug(
-                f"Compiled simple pattern: '\\b{wrong}\\b' → '{correct}'"
-                )
-        return patterns
-    
-    def _compile_regex_patterns(self) -> List[Tuple[re.Pattern, str]]:
-        """
-        Pre-compile regex patterns for pattern-based corrections.
-        Returns a list of tuples containing compiled regex patterns and their replacements.
-        """
-        patterns = []
-        for entry in self.corrections.patterns:
-            original_pattern = entry['pattern']
-            replacement = entry['replacement']
-            # Wrap patterns with word boundaries and non-capturing group
-            new_pattern = r'\b(?:' + original_pattern + r')\b'
-            regex = re.compile(new_pattern, flags=re.IGNORECASE)
-            patterns.append((regex, replacement))
-            logger.debug(
-                f"Compiled pattern-based regex: '{new_pattern}' → '{replacement}'"
-                )
-        return patterns
-    
-    def correct_transcription(self, transcription: str) -> str:
-        """
-        Apply both simple and pattern-based corrections to the transcription.
-        """
-        # Apply simple corrections
-        for pattern, correct in self.compiled_simple_patterns:
-            transcription = pattern.sub(
-                lambda m: self.replace_match(m, correct), transcription
-                )
-        
-        # Apply pattern-based corrections
-        for regex, replacement in self.compiled_regex_patterns:
-            transcription = regex.sub(replacement, transcription)
-        
-        return transcription
-    
-    @staticmethod
-    def replace_match(match, correct: str) -> str:
-        """
-        Replace the matched word while preserving the original casing.
-        """
-        word = match.group()
-        if word.isupper():
-            return correct.upper()
-        elif word[0].isupper():
-            return correct.capitalize()
-        else:
-            return correct
-        
-    def _save_file(
-        self, 
-        content: str, 
-        filepath: Path, 
-        description: str, 
-        log_message: str
-        ) -> None:
-        """
-        Generic method to save content to a file.
-        """
-        with open(filepath, 'w', encoding='utf-8') as file:
-            file.write(content)
-        print(f'[blue1]→ Saved {description}: [bold]{filepath.relative_to(self.cwd)}')
-        logger.info(f'{log_message} {filepath}')
-
-    def save_json(
-        self, 
-        result: dict, 
-        filepath: Path
-        ) -> None:
-        with open(filepath, 'w', encoding='utf-8') as fout:
-            json.dump(result, fout, indent=4)
-        print(f'[blue1]→ Saved .json: [bold]{filepath.relative_to(self.cwd)}')
-        logger.info(f"Saved .json to {filepath}")
-        
-    def save_txt(
-        self, 
-        transcription: Dict[str, str], 
-        filepath: Path
-        ) -> None:
-        """
-        Save the transcription as a TXT file after applying corrections.
-        """
-        original_text = transcription.get('text', '').strip()
-        corrected_text = self.correct_transcription(original_text)
-        self._save_file(
-            content=corrected_text,
-            filepath=filepath,
-            description='.txt',
-            log_message='Saved .txt transcript to'
-        )
-    
-    def save_txt_with_speaker_annotation(
-        self, 
-        annotated_text: str, 
-        filepath: Path
-        ) -> None:
-        """
-        Save the annotated transcription as a TXT file after applying corrections.
-        """
-        corrected_annotated_text = self.correct_transcription(annotated_text)
-        self._save_file(
-            content=corrected_annotated_text,
-            filepath=filepath,
-            description='.txt with speaker annotation',
-            log_message='Saved .txt transcription with speaker annotation →'
-        )
-    
-    def save_subtitles(
-        self, 
-        text: str, 
-        type: str, 
-        filepath: Path
-        ) -> None:
-        """
-        Save subtitles in the specified format after applying corrections.
-        """
-        corrected_text = self.correct_transcription(text)
-        description = f'.{type} subtitles'
-        log_message = f'Saved .{type} subtitles →'
-        self._save_file(
-            content=corrected_text,
-            filepath=filepath,
-            description=description,
-            log_message=log_message
-        )
-
-    def save_rttm_annotations(
-        self, 
-        rttm: str, 
-        filepath: Path
-        ) -> None:
-        self._save_file(
-            content=rttm,
-            filepath=filepath,
-            description='.rttm annotations',
-            log_message='Saved .rttm annotations →'
-        )
-
-    def save_results(
-        self,
-        result: dict,
-        export_formats: List[str]
-    ) -> List[Path]:
-        """
-        Write various output formats to disk based on the specified export formats.
-        """
-        output_filepath = Path(result['output_filepath'])
-        written_filepaths = []
-        
-        # Apply corrections if they are provided
-        if self.corrections and (
-            self.corrections.simple or self.corrections.patterns
-            ):
-            for language, transcription in result.get('transcription', {}).items():
-                # Correct the main transcription text
-                original_text = transcription.get('text', '').strip()
-                corrected_text = self.correct_transcription(original_text)
-                result['transcription'][language]['text'] = corrected_text
-                
-                # Correct chunks and word dicts
-                chunks = transcription.get('chunks', '')
-                for c in chunks:
-                    # Text chunk
-                    c['text'] = self.correct_transcription(c['text'])
-                    # Words
-                    words = c.get('words', '')
-                    for w in words:
-                        w['word'] = self.correct_transcription(w['word'])
-
-                # Correct speaker annotations if present
-                if 'text_with_speaker_annotation' in transcription:
-                    original_annotated = transcription['text_with_speaker_annotation']
-                    corrected_annotated = self.correct_transcription(original_annotated)
-                    result['transcription'][language]['text_with_speaker_annotation'] = corrected_annotated
-
-        # Now, transcription_items reflects the corrected transcriptions
-        transcription_items = result.get('transcription', {}).items()
-    
-        # Write .txt
-        if 'txt' in export_formats:
-            for language, transcription in transcription_items:
-                fout = output_filepath.parent / f"{output_filepath.name}_{language}.txt"
-                self.save_txt(
-                    transcription,
-                    filepath=fout
-                )
-                written_filepaths.append(str(fout))
-
-        # Write subtitles (.srt, .vtt and .webvtt)
-        subtitle_formats = {'srt', 'vtt', 'webvtt'}
-        if subtitle_formats.intersection(export_formats):
-            for language, transcription in transcription_items:
-                # .srt subtitles
-                if 'srt' in export_formats:
-                    fout = output_filepath.parent / f"{output_filepath.name}_{language}.srt"
-                    srt_text = create_subtitles(transcription, type='srt')
-                    self.save_subtitles(srt_text, type='srt', filepath=fout)
-                    written_filepaths.append(str(fout))
-
-                # .vtt / .webvtt subtitles
-                if 'vtt' in export_formats or 'webvtt' in export_formats:
-                    for subtitle_type in ['webvtt', 'vtt']:
-                        fout = output_filepath.parent / f"{output_filepath.name}_{language}.{subtitle_type}"
-                        vtt_text = create_subtitles(transcription, type=subtitle_type, result=result)
-                        self.save_subtitles(vtt_text, type=subtitle_type, filepath=fout)
-                        written_filepaths.append(str(fout))
-
-        # Write annotated .txt with speaker annotations
-        has_speaker_annotation = any(
-            'text_with_speaker_annotation' in transcription
-            for transcription in result['transcription'].values()
-        )
-
-        if 'txt' in export_formats and has_speaker_annotation:
-            for language, transcription in transcription_items:
-                if 'text_with_speaker_annotation' in transcription:
-                    fout = output_filepath.parent / f"{output_filepath.name}_{language}_annotated.txt"
-                    self.save_txt_with_speaker_annotation(
-                        annotated_text=transcription['text_with_speaker_annotation'],
-                        filepath=fout
-                    )
-                    written_filepaths.append(str(fout))
-
-        # Write .rttm
-        if 'rttm' in export_formats:
-            # Create .rttm annotations
-            rttm_dict = dict_to_rttm(result)
-
-            for language, rttm_annotation in rttm_dict.items():
-                fout = output_filepath.parent / f"{output_filepath.name}_{language}.rttm"
-                self.save_rttm_annotations(
-                    rttm=rttm_annotation,
-                    filepath=fout
-                )
-                written_filepaths.append(str(fout))
-
-        # Write .json
-        if 'json' in export_formats:
-            fout = output_filepath.with_suffix('.json')
-            written_filepaths.append(str(fout))
-            result['written_files'] = written_filepaths
-            self.save_json(result, filepath=fout)
-
-        return written_filepaths
-
-
-def load_config(config: json) -> dict:
-    with open(config, 'r', encoding='utf-8') as file:
-        return json.load(file)
-
 def ensure_dir(dir: Path) -> None:
     if not dir.exists():
         dir.mkdir(parents=True)
@@ -458,165 +221,6 @@ def set_output_dir(filepath: Path, base_dir: Path) -> None:
     output_dir = base_dir / filepath.stem
     ensure_dir(output_dir)
     return output_dir
-
-def create_text_with_speakers(
-    transcription_dict: dict, 
-    delimiter: str = '.'
-    ) -> dict:
-    """
-    Iterates through all chunks of each language and creates the complete text with 
-    speaker labels inserted when there is a speaker change.
-
-    Args:
-        transcription_dict (dict): The dictionary containing transcription data.
-
-    Returns:
-        dict: A dictionary mapping each language to its formatted text with speaker labels.
-    """    
-    transcriptions = transcription_dict.get('transcriptions', {})
-    
-    for lang, lang_data in transcriptions.items():
-        text = ""
-        current_speaker = None
-        chunks = lang_data.get('chunks', [])
-        
-        for chunk in chunks:
-            words = chunk.get('words', [])
-            
-            for word_info in words:
-                speaker = word_info.get('speaker')
-                word = word_info.get('word', '')
-                start_timestamp = format_time(word_info.get('start'), delimiter)
-                
-                # Insert speaker label if a speaker change is detected
-                if speaker != current_speaker:
-                    text += f"\n[{start_timestamp}] [{speaker}] "
-                    current_speaker = speaker
-                
-                # Append the word with a space
-                text += word + " "
-        
-        transcription_dict['transcriptions'][lang]['text_with_speaker_annotation'] = text.strip()
-    
-    return transcription_dict
-
-def format_time(seconds, delimiter=',') -> str:
-    """
-    Function for time conversion.
-    """
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    ms = int((seconds - int(seconds)) * 1000)
-    
-    return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
-
-def create_subtitles(transcription_dict: dict, type: str = 'srt', result: dict = None) -> str:
-    """
-    Converts a transcription dictionary into subtitle format (.srt or .webvtt).
-
-    Args:
-        transcription_dict (dict): Dictionary containing transcription data with 'chunks'.
-        sub_length (int, optional): Maximum duration in seconds for each subtitle block.
-        type (str, optional): Subtitle format, either 'srt' or 'webvtt'. Default is 'srt'.
-
-    Returns:
-        str: Formatted subtitle text in the specified format.
-    """
-    subtitle_text = ''
-    seg_id = 0
-    
-    for chunk in transcription_dict['chunks']:
-        start_time = chunk['timestamp'][0]
-        end_time = chunk['timestamp'][1]
-        text = chunk['text'].replace('’', '\'')
-        
-        # Create .srt subtitles
-        if type == 'srt':
-            start_time_str = format_time(start_time, delimiter=',')
-            end_time_str = format_time(end_time, delimiter=',')
-            seg_id += 1
-            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
-        
-        # Create .webvtt subtitles    
-        elif type in ['webvtt', 'vtt']:
-            start_time_str = format_time(start_time, delimiter='.')
-            end_time_str = format_time(end_time, delimiter='.')
-
-            if seg_id == 0:
-                subtitle_text += f"WEBVTT {Path(result['output_filepath']).stem}\n\n"
-                
-                if type == 'vtt':
-                    subtitle_text += 'NOTE transcribed with whisply\n\n'
-                    subtitle_text += f"NOTE media: {Path(result['input_filepath']).absolute()}\n\n"
-                
-            seg_id += 1
-            subtitle_text += f"""{seg_id}\n{start_time_str} --> {end_time_str}\n{text.strip()}\n\n"""
-        
-    return subtitle_text
-
-def dict_to_rttm(result: dict) -> dict:
-    """
-    Converts a transcription dictionary to RTTM file format.
-    """
-    file_id = result.get('input_filepath', 'unknown_file')
-    file_id = Path(file_id).stem
-    rttm_dict = {}
-
-    # Iterate over each available language
-    for lang, transcription in result.get('transcription', {}).items():
-        lines = []
-        current_speaker = None
-        speaker_start_time = None
-        speaker_end_time = None
-
-        chunks = transcription.get('chunks', [])
-
-        # Collect all words from chunks
-        all_words = []
-        for chunk in chunks:
-            words = chunk.get('words', [])
-            all_words.extend(words)
-
-        # Sort all words by their start time
-        all_words.sort(key=lambda w: w.get('start', 0.0))
-
-        for word_info in all_words:
-            speaker = word_info.get('speaker', 'SPEAKER_00')
-            word_start = word_info.get('start', 0.0)
-            word_end = word_info.get('end', word_start)
-
-            if speaker != current_speaker:
-                # If there is a previous speaker segment, write it to the RTTM
-                if current_speaker is not None:
-                    duration = speaker_end_time - speaker_start_time
-                    rttm_line = (
-                        f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
-                        f"<NA> <NA> {current_speaker} <NA>"
-                    )
-                    lines.append(rttm_line)
-
-                # Start a new speaker segment
-                current_speaker = speaker
-                speaker_start_time = word_start
-                speaker_end_time = word_end
-            else:
-                # Extend the current speaker segment
-                speaker_end_time = max(speaker_end_time, word_end)
-
-        # Write the last speaker segment to the RTTM
-        if current_speaker is not None:
-            duration = speaker_end_time - speaker_start_time
-            rttm_line = (
-                f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
-                f"<NA> <NA> {current_speaker} <NA>"
-            )
-            lines.append(rttm_line)
-
-        rttm_content = "\n".join(lines)
-        rttm_dict[lang] = rttm_content
-
-    return rttm_dict
 
 def return_valid_fileformats() -> list[str]:
     return [
@@ -710,7 +314,8 @@ def check_file_format(
             
         except ffmpeg.Error as e:
             print(f"→ Error running ffprobe: {e}")
-            print(f"→ You may have provided an unsupported file type. Please check 'whisply --list_formats' for all supported formats.")
+            print(f"→ You may have provided an unsupported file type.\
+Please check 'whisply --list_formats' for all supported formats.")
     
     try:
         # Load the audio file into a NumPy array
@@ -742,6 +347,21 @@ def convert_file_format(old_filepath: str, new_filepath: str):
         .run(quiet=True,
              overwrite_output=True)
     )
+
+def load_config(config: json) -> dict:
+    with open(config, 'r', encoding='utf-8') as file:
+        return json.load(file)
+
+def format_time(seconds, delimiter=',') -> str:
+    """
+    Function for time conversion.
+    """
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds - int(seconds)) * 1000)
+    
+    return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
  
 def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
     """

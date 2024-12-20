@@ -5,86 +5,101 @@ from datetime import datetime
 from functools import partial
 from rich import print
 
-from whisply import little_helper, models
-from whisply.little_helper import FilePathProcessor, OutputWriter
+from whisply import little_helper, output_utils, models
+from whisply.little_helper import FilePathProcessor
 from whisply.post_correction import Corrections
 
 # Set logging configuration
-logging.basicConfig(filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
-                    level=logging.INFO, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s')
+logging.basicConfig(
+    filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
+    level=logging.INFO, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s'
+    )
 
 class TranscriptionHandler:
     """
-    Handles transcription and diarization of audio / video files using various Whisper-based models.
+    Handles transcription and diarization of audio/video files using various 
+    Whisper-based models.
 
-    This class handels the transcription of input files using different implementations of OpenAI's 
-    Whisper models, including whisperX, insanely-fast-whisper, and faster-whisper. It supports features 
-    such as language detection, speaker diarization, translation, subtitle generation, and exporting 
-    transcriptions in multiple formats. The class is designed to handle single files, directories, URLs, 
-    and lists of files, ensuring flexibility and ease of use for diverse transcription needs.
+    This class leverages different implementations of OpenAI's Whisper models 
+    (whisperX, insanely-fast-whisper, faster-whisper) to transcribe audio and 
+    video files. It supports features like language detection, speaker 
+    diarization, translation, subtitle generation, and exporting transcriptions
+    in multiple formats. It is capable of processing single files, directories, 
+    URLs, and lists of files, providing flexibility for diverse transcription 
+    needs.
 
-    Parameters:
-        base_dir (str, optional): Directory to store transcription outputs. Defaults to './transcriptions'.
-        model (str, optional): The Whisper model variant to use (e.g., 'large-v2'). Defaults to 'large-v2'.
-        device (str, optional): Compute device to run the model on ('cpu', 'cuda', etc.). Defaults to 'cpu'.
-        file_language (str, optional): Language of the input audio. If not provided, language detection is 
-        performed.
-        annotate (bool, optional): Enable speaker diarization. Defaults to False.
-        hf_token (str, optional): Hugging Face token for accessing restricted models or features.
-        subtitle (bool, optional): Generate subtitles with word-level timestamps. Defaults to False.
-        sub_length (int, optional): Maximum number of words per subtitle chunk. Required if subtitle is True.
-        translate (bool, optional): Translate transcription to English if the original language is different. 
-        Defaults to False.
-        verbose (bool, optional): Enable detailed logging and output. Defaults to False.
-        export_formats (str or list, optional): Formats to export the transcription results (e.g., 'json', 'srt'). 
-        Defaults to 'all'.
+    Args:
+        base_dir (str, optional): Directory to store transcription outputs. 
+            Defaults to './transcriptions'.
+        model (str, optional): Whisper model variant to use (e.g., 'large-v2'). 
+            Defaults to 'large-v3-turbo'.
+        device (str, optional): Compute device ('cpu', 'cuda', etc.). 
+            Defaults to 'cpu'.
+        file_language (str, optional): Language of the input audio. 
+            If not provided, language detection is performed.
+        annotate (bool, optional): Enable speaker diarization. 
+            Defaults to False.
+        hf_token (str, optional): Hugging Face token for accessing restricted  
+            models or features.
+        subtitle (bool, optional): Generate subtitles with word-level timestamps. 
+            Defaults to False.
+        sub_length (int, optional): Maximum number of words per subtitle chunk. 
+            Required if subtitle is True.
+        translate (bool, optional): Translate transcription to English if the 
+            original language is different. Defaults to False.
+        verbose (bool, optional): Enable detailed logging and output. 
+            Defaults to False.
+        export_formats (str or list, optional): Formats to export transcriptions 
+            (e.g., 'json', 'srt'). Defaults to 'all'.
 
     Attributes:
-        base_dir (Path): Resolved base directory for storing transcriptions.
-        file_formats (list): Supported audio file formats.
+        base_dir (Path): Directory for storing transcriptions.
         device (str): Compute device in use.
-        file_language (str or None): Detected or specified language of the audio file.
+        file_language (str or None): Detected or specified language of the 
+            audio.
         annotate (bool): Indicates if speaker diarization is enabled.
         translate (bool): Indicates if translation is enabled.
-        hf_token (str or None): Hugging Face token.
         subtitle (bool): Indicates if subtitle generation is enabled.
-        sub_length (int or None): Maximum number of words per subtitle chunk.
         verbose (bool): Indicates if verbose mode is active.
-        export_formats (str or list): Formats selected for exporting transcriptions.
-        metadata (dict): Collected metadata about the transcription settings.
-        filepaths (list): List of audio file paths to be processed.
-        output_dir (Path or None): Directory where the current transcription output is stored.
-        processed_files (list): List of dictionaries containing processed file information and results.
+        export_formats (str or list): Selected formats for exporting 
+            transcriptions.
+        processed_files (list): List of processed file information and results.
 
     Methods:
         get_filepaths(filepath: str):
-            Retrieves and validates file paths from a single file, directory, URL, or a list file.
+            Retrieves and validates file paths from various input types.
         
-        detect_language(file: Path) -> str:
-            Detects the language of the given audio file using the specified Whisper model.
+        detect_language(file: Path, audio_array) -> str:
+            Detects the language of the given audio file.
         
         process_files(files: list):
-            Processes a list of audio files for transcription, handling conversion, language detection, 
-            transcription, optional translation, and exporting results.
+            Processes a list of audio files for transcription and diarization.
         
         transcribe_with_whisperx(filepath: Path) -> dict:
-            Transcribes an audio file using the whisperX implementation, providing word-level timestamps 
-            and optional speaker annotation.
+            Transcribes an audio file using the whisperX implementation.
         
         transcribe_with_insane_whisper(filepath: Path) -> dict:
-            Transcribes an audio file using the insanely-fast-whisper implementation for rapid automatic speech recognition.
+            Transcribes an audio file using the insanely-fast-whisper 
+            implementation.
         
-        transcribe_with_faster_whisper(filepath: Path, num_workers: int = 1) -> dict:
-            Transcribes an audio file using the faster-whisper implementation, supporting multi-worker processing.
+        transcribe_with_faster_whisper(filepath: Path, num_workers: int = 1) 
+            -> dict:
+            Transcribes an audio file using the faster-whisper implementation.
         
         adjust_word_chunk_length(result: dict) -> dict:
-            Adjusts the transcription result by splitting text into chunks based on a maximum word count.
+            Splits transcription text into chunks based on a maximum word 
+            count.
         
         to_transcription_dict(insanely_annotation: list[dict]) -> dict:
-            Converts speaker-annotated transcription results into a standardized dictionary format.
+            Converts speaker-annotated results into a standardized dictionary.
         
         to_whisperx(transcription_result: dict) -> dict:
-            Normalizes transcription results to the whisperX dictionary structure.
+            Normalizes transcription results to the whisperX format.
+        
+        create_text_with_speakers(transcription_dict: dict, 
+            delimiter: str = '.') -> dict:
+            Inserts speaker labels into the transcription text upon speaker 
+            changes.
     """
     def __init__(
         self, 
@@ -92,7 +107,8 @@ class TranscriptionHandler:
         model='large-v3-turbo', 
         device='cpu', 
         file_language=None, 
-        annotate=False, 
+        annotate=False,
+        num_speakers=None,
         hf_token=None, 
         subtitle=False, 
         sub_length=None, 
@@ -110,6 +126,7 @@ class TranscriptionHandler:
         self.model = None
         self.model_provided = model
         self.annotate = annotate
+        self.num_speakers = num_speakers
         self.translate = translate
         self.hf_token = hf_token
         self.subtitle = subtitle
@@ -124,28 +141,31 @@ class TranscriptionHandler:
         self.processed_files = []
 
     def _collect_metadata(self):
-        metadata = {'output_dir': str(self.base_dir),
-                    'file_language': self.file_language,
-                    'model': self.model,
-                    'device': self.device,
-                    'annotate': self.annotate,
-                    'translate': self.translate,
-                    'subtitle': self.subtitle,
-                    'sub_length': self.sub_length
-                    }
-        return metadata
+        return {
+            'output_dir': str(self.base_dir),
+            'file_language': self.file_language,
+            'model': self.model_provided,
+            'device': self.device,
+            'annotate': self.annotate,
+            'num_speakers': self.num_speakers,
+            'translate': self.translate,
+            'subtitle': self.subtitle,
+            'sub_length': self.sub_length
+            }
     
     def adjust_word_chunk_length(self, result: dict) -> dict:
             """
             Generates text chunks based on the maximum number of words.
 
             Parameters:
-                result (dict): The nested dictionary containing segments and words.
-                max_number (int): The maximum number of words per chunk. Default is 6.
+                result (dict): The nested dictionary containing segments 
+                and words.
+                max_number (int): The maximum number of words per chunk. 
+                Default is 6.
 
             Returns:
-                dict: A dictionary containing a list of chunks, each with 'text', 
-                'timestamp', and 'words'.
+                dict: A dictionary containing a list of chunks, each with 
+                'text', 'timestamp', and 'words'.
             """
             # Flatten all words from all segments
             words = [
@@ -230,13 +250,59 @@ class TranscriptionHandler:
             ]
         }
         return result
+    
+    def create_text_with_speakers(
+        self,
+        transcription_dict: dict, 
+        delimiter: str = '.'
+        ) -> dict:
+        """
+        Iterates through all chunks of each language and creates the complete text with 
+        speaker labels inserted when there is a speaker change.
+
+        Args:
+            transcription_dict (dict): The dictionary containing transcription data.
+
+        Returns:
+            dict: A dictionary mapping each language to its formatted text with speaker labels.
+        """    
+        transcriptions = transcription_dict.get('transcriptions', {})
+        
+        for lang, lang_data in transcriptions.items():
+            text = ""
+            current_speaker = None
+            chunks = lang_data.get('chunks', [])
+            
+            for chunk in chunks:
+                words = chunk.get('words', [])
+                
+                for word_info in words:
+                    speaker = word_info.get('speaker')
+                    word = word_info.get('word', '')
+                    start_timestamp = little_helper.format_time(
+                        word_info.get('start'), 
+                        delimiter
+                        )
+                    
+                    # Insert speaker label if a speaker change is detected
+                    if speaker != current_speaker:
+                        text += f"\n[{start_timestamp}] [{speaker}] "
+                        current_speaker = speaker
+                    
+                    # Append the word with a space
+                    text += word + " "
+            
+            transcription_dict['transcriptions'][lang]['text_with_speaker_annotation'] = text.strip()
+        
+        return transcription_dict
 
     def transcribe_with_whisperx(self, filepath: Path) -> dict:
         """
-        Transcribe a file with the whisperX implementation that returns word-level timestamps and speaker annotation:
-        https://github.com/m-bain/whisperX 
+        Transcribe a file with the whisperX implementation that returns word-level
+        timestamps and speaker annotation:https://github.com/m-bain/whisperX 
         
-        This implementation is used when a specific subtitle length (e.g. 5 words per individual subtitle) is needed.
+        This implementation is used when a specific subtitle length (e.g. 5 words 
+        per individual subtitle) is needed.
         """
         import torch
         import whisperx
@@ -244,10 +310,12 @@ class TranscriptionHandler:
         
         def fill_missing_timestamps(segments: list) -> list:
             """
-            whisperX does not provide timestamps for words containing only numbers (e.g. "1.5", "2024" etc.).
+            whisperX does not provide timestamps for words containing only 
+            numbers (e.g. "1.5", "2024" etc.).
             
-            The function fills these missing timestamps by padding the last known 'end' timestamp for a missing
-            'start' timestamp or by cutting the next known 'start' timestamp for a missing 'end' timestamp.
+            The function fills these missing timestamps by padding the last 
+            known 'end' timestamp for a missing 'start' timestamp or by cutting 
+            the next known 'start' timestamp for a missing 'end' timestamp.
             """
             padding = 0.05 # in seconds
             
@@ -281,7 +349,8 @@ class TranscriptionHandler:
                     if self.annotate and 'speaker' not in word:
                         speaker_assigned = False
                         
-                         # Case 1: If it's the first word, look forward for the next speaker
+                         # Case 1: If it's the first word, look forward for the 
+                         # next speaker
                         if i == 0:
                             for j in range(i + 1, num_words):
                                 if 'speaker' in words[j]:
@@ -289,7 +358,8 @@ class TranscriptionHandler:
                                     speaker_assigned = True
                                     break
 
-                        # Case 2: If it's the last word, look backward for the previous speaker
+                        # Case 2: If it's the last word, look backward for the 
+                        # previous speaker
                         elif i == num_words - 1:
                             for j in range(i - 1, -1, -1):
                                 if 'speaker' in words[j]:
@@ -297,7 +367,8 @@ class TranscriptionHandler:
                                     speaker_assigned = True
                                     break
 
-                        # Case 3: For other words, prefer the previous speaker; if not found, look forward
+                        # Case 3: For other words, prefer the previous speaker; 
+                        # If not found, look forward
                         if not speaker_assigned:
                             # Look backward
                             for j in range(i - 1, -1, -1):
@@ -344,15 +415,35 @@ class TranscriptionHandler:
                 task=task
                 )
             
-            model_a, metadata = whisperx.load_align_model(device=device, language_code=language)
-            result = whisperx.align(result["segments"], model_a, metadata, audio, device, 
-                                    return_char_alignments=False)
+            model_a, metadata = whisperx.load_align_model(
+                device=device, 
+                language_code=language
+                )
+            result = whisperx.align(
+                result["segments"], 
+                model_a, 
+                metadata, 
+                audio, 
+                device,
+                return_char_alignments=False
+                )
             
             # Speaker annotation 
+            print(f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}")
             if self.annotate:
-                diarize_model = whisperx.DiarizationPipeline(use_auth_token=self.hf_token, device=device)
-                diarize_segments = diarize_model(str(filepath))
-                result = whisperx.assign_word_speakers(diarize_segments, result)
+                diarize_model = whisperx.DiarizationPipeline(
+                    use_auth_token=self.hf_token, 
+                    device=device
+                    )
+                diarize_segments = diarize_model(
+                    str(filepath),
+                    # min_speakers=0 if self.num_speakers else None,
+                    max_speakers=self.num_speakers
+                    )
+                result = whisperx.assign_word_speakers(
+                    diarize_segments, 
+                    result
+                    )
                 
             # Empty CUDA cache
             if self.device == 'cuda:0':
@@ -367,21 +458,28 @@ class TranscriptionHandler:
         t_start = time.time()
         
         # Run the transcription
-        transcription_task = partial(whisperx_task, task='transcribe', language=self.file_language)
+        transcription_task = partial(
+            whisperx_task, 
+            task='transcribe', 
+            language=self.file_language
+            )
         transcription_result = little_helper.run_with_progress(
             description=f"[cyan]→ Transcribing ({'CUDA' if self.device == 'cuda:0' else 'CPU'}) [bold]{filepath.name}",
             task=transcription_task
         )
         
         # Fill in missing timestamps and adjust word chunk length
-        transcription_result['segments'] = fill_missing_timestamps(transcription_result['segments'])
-        transcription_result = self.adjust_word_chunk_length(transcription_result)
+        transcription_result['segments'] = fill_missing_timestamps(
+            transcription_result['segments']
+            )
+        transcription_result = self.adjust_word_chunk_length(
+            transcription_result
+            )
         
         # Create result dict and append transcription to it
         result = {'transcriptions': {}}
         result['transcriptions'][self.file_language] = transcription_result
         
-        # Print transcription if verbose
         if self.verbose:
             print(f"{result['transcriptions'][self.file_language]['text']}")
         
@@ -411,19 +509,23 @@ class TranscriptionHandler:
 
     def transcribe_with_insane_whisper(self, filepath: Path) -> dict:
         """
-        Transcribes a file using the 'insanely-fast-whisper' implementation: https://github.com/Vaibhavs10/insanely-fast-whisper
+        Transcribes a file using the 'insanely-fast-whisper' implementation:
+        https://github.com/Vaibhavs10/insanely-fast-whisper
 
-        This method utilizes the 'insanely-fast-whisper' implementation of OpenAI Whisper for automatic speech recognition.
-        It initializes a pipeline for transcription and retrieves the result. If speaker detection is enabled,
-        it also annotates speakers in the transcription result.
+        This method utilizes the 'insanely-fast-whisper' implementation of 
+        OpenAI Whisper for automatic speech recognition. It initializes a 
+        pipeline for transcription and retrieves the result. If speaker 
+        detection is enabled, it also annotates speakers in the transcription 
+        result.
 
         Parameters:
         - filepath (Path): The path to the audio file for transcription.
 
         Returns:
-        - dict: A dictionary containing the transcription result and, if speaker detection is enabled,
-                the speaker diarization result. The transcription result includes the recognized text
-                and timestamps if available.
+        - dict: A dictionary containing the transcription result and, if 
+                speaker detection is enabled, the speaker diarization result. 
+                The transcription result includes the recognized text and 
+                timestamps if available.
         """
         import torch
         from transformers import pipeline
@@ -447,7 +549,9 @@ class TranscriptionHandler:
             return transcription_result
 
         # Start and time transcription
-        logging.info(f"👨‍💻 Transcription started with 🚅 insane-whisper for {filepath.name}")
+        logging.info(
+            f"👨‍💻 Transcription started with 🚅 insane-whisper for {filepath.name}"
+            )
         t_start = time.time()
         
         try:
@@ -486,6 +590,22 @@ class TranscriptionHandler:
                 description=f"[cyan]→ Transcribing ({self.device.upper()}) [bold]{filepath.name}",
                 task=transcription_task
             )
+            
+            # Annotate speakers
+            if self.annotate:
+                annotation_result = diarize_utils.diarize(
+                    transcription_result,
+                    diarization_model='pyannote/speaker-diarization-3.1',
+                    hf_token=self.hf_token,
+                    file_name=str(filepath),
+                    description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
+                    # num_speakers=None,
+                    num_speakers=self.num_speakers,
+                    min_speakers=None,
+                    max_speakers=None,
+                )
+                # Transform annotation_result to correct dict structure                
+                transcription_result = self.to_transcription_dict(annotation_result)
             
             # Adjust word chunk length
             transcription_result = self.to_whisperx(transcription_result)
@@ -536,7 +656,8 @@ class TranscriptionHandler:
                     
             # Create full transcription with speaker annotation
             if self.annotate:
-                result = little_helper.create_text_with_speakers(result)
+                # Create full transcription with speaker annotation
+                result = self.create_text_with_speakers(result)
 
         except Exception as e:
             print(f'{e}')
@@ -713,7 +834,7 @@ class TranscriptionHandler:
         be processed.
         """
         logging.info(f"Provided parameters for processing: {self.metadata}")
-
+        
         # Get filepaths
         filepath_handler = FilePathProcessor(self.file_formats)
         [filepath_handler.get_filepaths(f) for f in files]            
@@ -747,7 +868,7 @@ class TranscriptionHandler:
                     self.model_provided, 
                     implementation='insane-whisper'
                 )
-                print(f'→ Using {self.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{self.model}"')
+                print(f'[deep_pink4]→ Using {self.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{self.model}"')
                 result_data = self.transcribe_with_insane_whisper(filepath)
             
             elif self.device in ['cpu', 'cuda:0']:
@@ -756,14 +877,14 @@ class TranscriptionHandler:
                         self.model_provided, 
                         implementation='whisperx'
                     )
-                    print(f'→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
+                    print(f'[deep_pink4]→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
                     result_data = self.transcribe_with_whisperx(filepath)
                 else:
                     self.model = models.set_supported_model(
                         self.model_provided, 
                         implementation='faster-whisper'
                     )
-                    print(f'→ Using {self.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"')
+                    print(f'[deep_pink4]→ Using {self.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"')
                     result_data = self.transcribe_with_faster_whisper(filepath)
 
             result = {
@@ -778,7 +899,7 @@ class TranscriptionHandler:
             }
 
             # Save results
-            result['written_files'] = OutputWriter(
+            result['written_files'] = output_utils.OutputWriter(
                 corrections=self.corrections
                 ).save_results(
                     result=result,

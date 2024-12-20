@@ -98,6 +98,6 @@ def is_model_supported(model: str, implementation: str) -> bool:
 
 def set_supported_model(model: str, implementation: str) -> str:
     if not is_model_supported(model, implementation):
-        print(f'→ Model "{model}" is not available for this task / implementation → Using default model "large-v2".')
+        print(f'[deep_pink3]→ Model "{model}" is not available for this task / implementation → Using default model "large-v2".')
         return WHISPER_MODELS.get("large-v2")[implementation]
     return WHISPER_MODELS.get(model)[implementation]
