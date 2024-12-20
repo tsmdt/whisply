@@ -6,6 +6,7 @@ import ffmpeg
 import validators
 import numpy as np
 
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Any, List
 from rich import print
@@ -15,6 +16,45 @@ from whisply import download_utils
 # Set logging configuration
 logger = logging.getLogger('little_helper')
 logger.setLevel(logging.INFO)
+
+
+class DeviceChoice(str, Enum):
+    AUTO = 'auto'
+    CPU = 'cpu'
+    GPU = 'gpu'
+    MPS = 'mps'
+    
+    
+def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
+    """
+    Determine the computation device based on user preference and 
+    availability.
+    """
+    import torch
+    
+    if device == DeviceChoice.AUTO:
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        elif torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+    elif device == DeviceChoice.GPU:
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        else:
+            device = 'cpu'
+    elif device == DeviceChoice.MPS:
+        if torch.backends.mps.is_available():
+            device = 'mps'
+        else:
+            device = 'cpu'
+    elif device == DeviceChoice.CPU:
+        device = 'cpu'
+    else:
+        device = 'cpu'
+    return device
+
 
 class FilePathProcessor:
     """

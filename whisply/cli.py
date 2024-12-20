@@ -3,104 +3,17 @@ import typer
 import warnings
 
 from pathlib import Path
-from enum import Enum
 from typing import Optional, List
 from rich import print
+from whisply import output_utils, little_helper
 from whisply import post_correction as post
+from whisply.output_utils import ExportFormats
+from whisply.little_helper import DeviceChoice
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 app = typer.Typer()
-
-class DeviceChoice(str, Enum):
-    AUTO = 'auto'
-    CPU = 'cpu'
-    GPU = 'gpu'
-    MPS = 'mps'
-    
-class ExportFormats(str, Enum):
-    ALL = 'all'
-    JSON = 'json'
-    TXT = 'txt'
-    RTTM = 'rttm'
-    VTT = 'vtt'
-    WEBVTT = 'webvtt'
-    SRT = 'srt'
-
-def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
-    """
-    Determine the computation device based on user preference and availability.
-    """
-    import torch
-    
-    if device == DeviceChoice.AUTO:
-        if torch.cuda.is_available():
-            device = 'cuda:0'
-        elif torch.backends.mps.is_available():
-            device = 'mps'
-        else:
-            device = 'cpu'
-    elif device == DeviceChoice.GPU:
-        if torch.cuda.is_available():
-            device = 'cuda:0'
-        else:
-            device = 'cpu'
-    elif device == DeviceChoice.MPS:
-        if torch.backends.mps.is_available():
-            device = 'mps'
-        else:
-            device = 'cpu'
-    elif device == DeviceChoice.CPU:
-        device = 'cpu'
-    else:
-        device = 'cpu'
-    return device
-
-def determine_export_formats(
-    export_format: ExportFormats,
-    annotate: bool,
-    subtitle: bool
-) -> List[str]:
-    """
-    Determine the export formats based on user options and availability.
-
-    Returns a list of export format strings to be used.
-    """
-    available_formats = set()
-    if export_format == ExportFormats.ALL:
-        available_formats.add(ExportFormats.JSON.value)
-        available_formats.add(ExportFormats.TXT.value)
-        if annotate:
-            available_formats.add(ExportFormats.RTTM.value)
-        if subtitle:
-            available_formats.add(ExportFormats.WEBVTT.value)
-            available_formats.add(ExportFormats.VTT.value)
-            available_formats.add(ExportFormats.SRT.value)
-    else:
-        if export_format in (ExportFormats.JSON, ExportFormats.TXT):
-            available_formats.add(export_format.value)
-        elif export_format == ExportFormats.RTTM:
-            if annotate:
-                available_formats.add(export_format.value)
-            else:
-                print("→ RTTM export format requires annotate option to be True.")
-                raise typer.Exit()
-        elif export_format in (
-            ExportFormats.VTT,
-            ExportFormats.SRT,
-            ExportFormats.WEBVTT
-            ):
-            if subtitle:
-                available_formats.add(export_format.value)
-            else:
-                print(f"→ {export_format.value.upper()} export format requires subtitle option to be True.")
-                raise typer.Exit()
-        else:
-            print(f"→ Unknown export format: {export_format.value}")
-            raise typer.Exit()
-
-    return list(available_formats)
 
 @app.command(no_args_is_help=True)
 def main(
@@ -266,10 +179,13 @@ def main(
             raise typer.Exit()
 
     # Determine the computation device
-    device_str = get_device(device=device)
+    device_str = little_helper.get_device(device=device)
     
     # Determine the ExportFormats
-    export_formats = determine_export_formats(export_format, annotate, subtitle)
+    export_formats = output_utils.determine_export_formats(
+        export_format, 
+        annotate, subtitle
+        )
     
     # Load corrections if post_correction is provided
     if post_correction:
