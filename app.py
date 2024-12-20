@@ -298,9 +298,9 @@ def transcribe(file, model, device, language, options, hf_token, sub_length):
 
             # Save results
             result['written_files'] = little_helper.OutputWriter().save_results(
-                result=result,
-                export_formats=handler.export_formats
-                )
+                    result=result,
+                    export_formats=handler.export_formats
+                    )
             
             # Update progress
             current_step += 1
