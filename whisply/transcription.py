@@ -456,6 +456,10 @@ class TranscriptionHandler:
                 diarize_segments, 
                 transcription_result
                 )                  
+            
+            # Empty CUDA cache
+            if self.device == 'cuda:0':
+                empty_cuda_cache(diarize_model)
               
             return result
         
@@ -905,7 +909,7 @@ class TranscriptionHandler:
                     self.model_provided, 
                     implementation='insane-whisper'
                 )
-                print(f'[deep_pink4]→ Using {self.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{self.model}"')
+                print(f'[blue1]→ Using {self.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{self.model}"')
                 result_data = self.transcribe_with_insane_whisper(filepath)
             
             elif self.device in ['cpu', 'cuda:0']:
@@ -915,7 +919,7 @@ class TranscriptionHandler:
                         self.model_provided, 
                         implementation='whisperx'
                     )
-                    print(f'[deep_pink4]→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
+                    print(f'[blue1]→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
                     result_data = self.transcribe_with_whisperx(filepath)
                 else:
                     # Faster-Whisper for raw transcription
@@ -923,7 +927,7 @@ class TranscriptionHandler:
                         self.model_provided, 
                         implementation='faster-whisper'
                     )
-                    print(f'[deep_pink4]→ Using {self.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"')
+                    print(f'[blue1]→ Using {self.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"')
                     result_data = self.transcribe_with_faster_whisper(filepath)
 
             result = {
