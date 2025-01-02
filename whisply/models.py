@@ -81,7 +81,7 @@ WHISPER_MODELS = {
     'distil-large-v3': {
         'faster-whisper': 'distil-large-v3', 
         'insane-whisper': 'distil-whisper/distil-large-v3',
-        'whisperx': None
+        'whisperx': 'distil-large-v3'
         },
     'large-v3-turbo': {
         'faster-whisper': 'deepdml/faster-whisper-large-v3-turbo-ct2', 

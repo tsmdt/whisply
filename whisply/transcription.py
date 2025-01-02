@@ -467,6 +467,8 @@ class TranscriptionHandler:
         logging.info(f"👨‍💻 Transcription started with whisper🆇 for {filepath.name}")
         t_start = time.time()
         
+        print(self.file_language)
+        
         # Run the transcription
         transcription_task = partial(
             whisperx_task, 
