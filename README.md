@@ -137,29 +137,29 @@ $ whisply
 
  WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --files               -f         TEXT                                Path to file, folder, URL or .list to process. [default: None]                        │
-│ --output_dir          -o         DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                   │
-│ --device              -d         [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto] │
-│ --model               -m         TEXT                                Whisper model to use (List models via --list_models). [default: large-v3-turbo]       │
-│ --lang                -l         TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]  │
-│ --annotate            -a                                             Enable speaker annotation (Saves .rttm | Default: False).                             │
-│ --num_speakers        -num       INTEGER                             Number of speakers to annotate (Default: auto-detection). [default: None]             │
-│ --hf_token            -hf        TEXT                                HuggingFace Access token required for speaker annotation. [default: None]             │
-│ --subtitle            -s                                             Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                     │
-│ --sub_length                     INTEGER                             Subtitle segment length in words. [default: 5]                                        │
-│ --translate           -t                                             Translate transcription to English (Default: False).                                  │
-│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                              │
-│ --verbose             -v                                             Print text chunks during transcription (Default: False).                              │
-│ --del_originals       -del                                           Delete original input files after file conversion. (Default: False)                   │
-│ --config                         PATH                                Path to configuration file. [default: None]                                           │
-│ --post_correction     -post      PATH                                Path to YAML file for post-correction. [default: None]                                │
-│ --list_filetypes                                                     List supported audio and video file types.                                            │
-│ --list_models                                                        List available models.                                                                │
-│ --install-completion                                                 Install completion for the current shell.                                             │
-│ --show-completion                                                    Show completion for the current shell, to copy it or customize the installation.      │
-│ --help                                                               Show this message and exit.                                                           │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --files               -f         TEXT                                Path to file, folder, URL or .list to process. [default: None]                                                                │
+│ --output_dir          -o         DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                                                           │
+│ --device              -d         [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto]                                         │
+│ --model               -m         TEXT                                Whisper model to use (List models via --list_models). [default: large-v3-turbo]                                               │
+│ --lang                -l         TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]                                          │
+│ --annotate            -a                                             Enable speaker annotation (Saves .rttm | Default: False).                                                                     │
+│ --num_speakers        -num       INTEGER                             Number of speakers to annotate (Default: auto-detection). [default: None]                                                     │
+│ --hf_token            -hf        TEXT                                HuggingFace Access token required for speaker annotation. [default: None]                                                     │
+│ --subtitle            -s                                             Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                                                             │
+│ --sub_length                     INTEGER                             Subtitle segment length in words. [default: 5]                                                                                │
+│ --translate           -t                                             Translate transcription to English (Default: False).                                                                          │
+│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                                                                      │
+│ --verbose             -v                                             Print text chunks during transcription (Default: False).                                                                      │
+│ --del_originals       -del                                           Delete original input files after file conversion. (Default: False)                                                           │
+│ --config                         PATH                                Path to configuration file. [default: None]                                                                                   │
+│ --post_correction     -post      PATH                                Path to YAML file for post-correction. [default: None]                                                                        │
+│ --launch_app          -app                                           Launch the web app instead of running standard CLI commands.                                                                  │
+│ --list_models                                                        List available models.                                                                                                        │
+│ --install-completion                                                 Install completion for the current shell.                                                                                     │
+│ --show-completion                                                    Show completion for the current shell, to copy it or customize the installation.                                              │
+│ --help                                                               Show this message and exit.                                                                                                   │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### App
@@ -167,7 +167,13 @@ $ whisply
 Instead of running `whisply` from the CLI you can start the web app instead:
 
 ```shell
-$ python app.py
+$ whisply --launch_app
+```
+
+or:
+
+```shell
+$ whisply -app
 ```
 
 Open the local URL in your browser after starting the app (**Note**: The URL might differ from system to system):
