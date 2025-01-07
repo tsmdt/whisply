@@ -1,11 +1,10 @@
 import os
 import typer
 import warnings
-
 from pathlib import Path
 from typing import Optional, List
 from rich import print
-from whisply import output_utils, little_helper
+from whisply import output_utils
 from whisply import post_correction as post
 from whisply.output_utils import ExportFormats
 from whisply.little_helper import DeviceChoice
@@ -13,9 +12,9 @@ from whisply.little_helper import DeviceChoice
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-app = typer.Typer()
+cli_app = typer.Typer()
 
-@app.command(no_args_is_help=True)
+@cli_app.command(no_args_is_help=True)
 def main(
     files: Optional[List[str]] = typer.Option(
         None,
@@ -116,21 +115,28 @@ def main(
         "-post",
         help="Path to YAML file for post-correction.",
     ),
-    list_filetypes: bool = typer.Option(
+    launch_app: bool = typer.Option(
         False,
-        "--list_filetypes",
-        help="List supported audio and video file types.",
+        "--launch_app",
+        "-app",
+        help="Launch the web app instead of running standard CLI commands.",
     ),
     list_models: bool = typer.Option(
         False,
         "--list_models",
         help="List available models.",
-    ),
+    )
 ):
     """
     WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
     """
     from whisply import little_helper, transcription, models
+    
+    # Start the gradio web app
+    if launch_app:
+        from whisply.app import main as run_gradio_app
+        run_gradio_app()
+        raise typer.Exit()
 
     # Load configuration from config.json if provided
     if config:
@@ -149,13 +155,6 @@ def main(
         verbose = config_data.get("verbose", verbose)
         del_originals = config_data.get("del_originals", del_originals)
         post_correction = config_data.get("post_correction", post_correction)
-
-    # Print supported filetypes 
-    if list_filetypes:
-        supported_filetypes = "Supported filetypes: "
-        supported_filetypes += ' '.join(little_helper.return_valid_fileformats())
-        print(f"{supported_filetypes}")
-        raise typer.Exit()
 
     # Print available models
     if list_models:
@@ -212,7 +211,7 @@ def main(
     service.process_files(files)
 
 def run():
-    app()
+    cli_app()
 
 if __name__ == "__main__":
     run()

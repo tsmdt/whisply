@@ -58,11 +58,6 @@ WHISPER_MODELS = {
         'insane-whisper': 'openai/whisper-large',
         'whisperx': 'large'
         },
-    'large-v1': {
-        'faster-whisper': 'large-v1', 
-        'insane-whisper': 'openai/whisper-large-v1',
-        'whisperx': 'large-v1'
-        },
     'large-v2': {
         'faster-whisper': 'large-v2', 
         'insane-whisper': 'openai/whisper-large-v2',

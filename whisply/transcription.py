@@ -467,8 +467,6 @@ class TranscriptionHandler:
         logging.info(f"👨‍💻 Transcription started with whisper🆇 for {filepath.name}")
         t_start = time.time()
         
-        print(self.file_language)
-        
         # Run the transcription
         transcription_task = partial(
             whisperx_task, 
@@ -728,7 +726,7 @@ class TranscriptionHandler:
                 segmented chunks with timestamps if available.
         """
         from faster_whisper import WhisperModel, BatchedInferencePipeline
-
+        
         # Start and time transcription
         logging.info(f"👨‍💻 Transcription started with 🏃‍♀️‍➡️ faster-whisper for {filepath.name}")
         t_start = time.time()
@@ -741,7 +739,7 @@ class TranscriptionHandler:
             num_workers=num_workers, 
             compute_type='int8' if self.device in ['mps', 'cpu'] else 'float16'
         ))
-        
+                
         # Define the transcription task
         def transcription_task():
             segments, _ = model.transcribe(
@@ -771,7 +769,7 @@ class TranscriptionHandler:
                     print(seg['text'])
                     
             return chunks
-        
+                
         # Add progress bar and run the transcription task
         chunks = little_helper.run_with_progress(
             description=f"[cyan]→ Transcribing ({self.device.upper()}) [bold]{filepath.name}",
@@ -857,7 +855,7 @@ class TranscriptionHandler:
         
         self.file_language = lang   
 
-        print(f'→ Detected language "{lang}" with probability {score:.2f}')
+        print(f'[blue1]→ Detected language "{lang}" with probability {score:.2f}')
         logging.info(f'Detected language → "{lang}" with probability {score:.2f}')
         
     def process_files(self, files) -> None:

@@ -43,11 +43,13 @@ def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
         if torch.cuda.is_available():
             device = 'cuda:0'
         else:
+            print(f"[blue1]→ NVIDIA GPU not available. Using CPU.")
             device = 'cpu'
     elif device == DeviceChoice.MPS:
         if torch.backends.mps.is_available():
             device = 'mps'
         else:
+            print(f"[blue1]→ MPS not available. Using CPU.")
             device = 'cpu'
     elif device == DeviceChoice.CPU:
         device = 'cpu'
