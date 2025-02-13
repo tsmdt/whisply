@@ -32,9 +32,9 @@ setup(
         'torchmetrics==1.3.2',
         'transformers==4.48.0',
         'validators==0.28.1',
-        'yt-dlp>=2024.07.07',
+        'yt-dlp==2025.1.15',
         'whisperx==3.3.0',
-        'gradio==5.11.0'
+        'gradio==5.12.0'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
