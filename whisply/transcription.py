@@ -553,10 +553,7 @@ class TranscriptionHandler:
         https://github.com/Vaibhavs10/insanely-fast-whisper
 
         This method utilizes the 'insanely-fast-whisper' implementation of 
-        OpenAI Whisper for automatic speech recognition. It initializes a 
-        pipeline for transcription and retrieves the result. If speaker 
-        detection is enabled, it also annotates speakers in the transcription 
-        result.
+        OpenAI Whisper for automatic speech recognition on Mac M1-M4 devices.
 
         Parameters:
         - filepath (Path): The path to the audio file for transcription.
@@ -569,8 +566,10 @@ class TranscriptionHandler:
         """
         import torch
         from transformers import pipeline
-        from transformers.utils import is_flash_attn_2_available
+        from transformers import logging as hf_logger
         from whisply import diarize_utils
+        
+        hf_logger.set_verbosity_error()
         
         def insane_whisper_annotation(transcription_result: dict) -> dict:
             # Speaker annotation
@@ -592,30 +591,31 @@ class TranscriptionHandler:
             f"👨‍💻 Transcription started with 🚅 insane-whisper for {filepath.name}"
             )
         t_start = time.time()
-        
-        try:
+                
+        try:                       
             pipe = pipeline(
-                "automatic-speech-recognition",
-                model = self.model, 
-                torch_dtype = torch.float32 if self.device == 'cpu' else torch.float16,
+                'automatic-speech-recognition',
+                model = self.model,
+                torch_dtype = torch.float16,
                 device = self.device,
                 model_kwargs = {
-                    "attn_implementation": "flash_attention_2"
-                    } if is_flash_attn_2_available() else {
-                        "attn_implementation": "eager"
-                        },
+                    'attn_implementation': 'eager'
+                    }
             )
             
-            # Define transcription function
-            def transcription_task():
+            # Define transcription function            
+            def transcription_task():                
                 transcription_result = pipe(
                     str(filepath),
-                    chunk_length_s = 30,
-                    batch_size = 8,
-                    return_timestamps = 'word', # True, word, chunk
-                    generate_kwargs = {
+                    batch_size=1,
+                    return_timestamps='word',
+                    generate_kwargs={
+                        'use_cache': True,
+                        'return_legacy_cache': False,
                         'language': self.file_language,
-                        }
+                        'task': "transcribe",
+                        'forced_decoder_ids': None
+                    }
                 )
                 return transcription_result
              
@@ -650,15 +650,17 @@ class TranscriptionHandler:
             
             # Translation
             if self.translate and self.file_language != 'en':
-                # Define translation task
                 def translation_task():
                     translation_result = pipe(
                         str(filepath),
-                        chunk_length_s = 30,
-                        batch_size = 8 if self.device in ['cpu', 'mps'] else 24,
-                        return_timestamps = 'word',
-                        generate_kwargs = {'task': 'translate',
-                                           'language': 'en'}
+                        batch_size=1,
+                        return_timestamps='word',
+                        generate_kwargs={
+                            'use_cache': True,
+                            'return_legacy_cache': False,
+                            'task': 'translate',
+                            # 'forced_decoder_ids': None
+                        }
                     )
                     return translation_result
                 
@@ -792,7 +794,8 @@ class TranscriptionHandler:
                     beam_size=5, 
                     task='translate', 
                     language='en',
-                    word_timestamps=True)
+                    word_timestamps=True
+                    )
                 
                 translation_chunks = []    
                 for segment in segments:
@@ -841,7 +844,11 @@ class TranscriptionHandler:
         
         def run_language_detection():
             lang_detection_model = WhisperModel(
-                models.set_supported_model(self.model_provided, implementation='faster-whisper'), 
+                models.set_supported_model(
+                    model=self.model_provided, 
+                    implementation='faster-whisper',
+                    translation=self.translate
+                    ), 
                 device='cpu' if self.device in ['mps', 'cpu'] else 'cuda', 
                 compute_type='int8' if self.device in ['mps', 'cpu'] else 'float16'
                 )
@@ -907,7 +914,8 @@ class TranscriptionHandler:
             if self.device == 'mps':
                 self.model = models.set_supported_model(
                     self.model_provided, 
-                    implementation='insane-whisper'
+                    implementation='insane-whisper',
+                    translation=self.translate
                 )
                 print(f'[blue1]→ Using {self.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{self.model}"')
                 result_data = self.transcribe_with_insane_whisper(filepath)
@@ -917,7 +925,8 @@ class TranscriptionHandler:
                     # WhisperX for annotation / subtitling
                     self.model = models.set_supported_model(
                         self.model_provided, 
-                        implementation='whisperx'
+                        implementation='whisperx',
+                        translation=self.translate
                     )
                     print(f'[blue1]→ Using {self.device.upper()} and whisper🆇  with model "{self.model}"')
                     result_data = self.transcribe_with_whisperx(filepath)
@@ -925,7 +934,8 @@ class TranscriptionHandler:
                     # Faster-Whisper for raw transcription
                     self.model = models.set_supported_model(
                         self.model_provided, 
-                        implementation='faster-whisper'
+                        implementation='faster-whisper',
+                        translation=self.translate
                     )
                     print(f'[blue1]→ Using {self.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"')
                     result_data = self.transcribe_with_faster_whisper(filepath)
