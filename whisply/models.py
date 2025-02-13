@@ -116,7 +116,7 @@ def is_model_supported(model: str, implementation: str, translation: bool) -> bo
 
 def set_supported_model(model: str, implementation: str, translation: bool) -> str:
     if not is_model_supported(model, implementation, translation):
-        default_model = "large-v2" if translation else "large-v3-turbo"
+        default_model = "large-v2"
         print(f'[blue1]→ Model "{model}" is not available for this task/implementation → Using default model "{default_model}".')
         return WHISPER_MODELS.get(default_model)[implementation]
     return WHISPER_MODELS.get(model)[implementation]
