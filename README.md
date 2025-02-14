@@ -80,17 +80,18 @@ For more information please refer to the <a href="https://github.com/SYSTRAN/fas
 
 **1. Install `ffmpeg`**
 
-```markdown
---- macOS ---
+```shell
+# --- macOS ---
 brew install ffmpeg
 
---- Linux ---
+# --- Linux ---
 sudo apt-get update
 sudo apt-get install ffmpeg
 
---- Windows ----
-https://ffmpeg.org/download.html
+# --- Windows ---
+winget install Gyan.FFmpeg
 ```
+For more information you can visit the [FFmpeg website](https://ffmpeg.org/download.html).
 
 **2. Clone this repository and change to project folder**
 
@@ -111,7 +112,11 @@ python3 -m venv venv
 **4. Activate the Python virtual environment**
 
 ```shell
+# --- Linux & macOS ---
 source venv/bin/activate
+
+# --- Windows ---
+venv\Scripts\activate
 ```
 
 **5. Install `whisply` with `pip`**
