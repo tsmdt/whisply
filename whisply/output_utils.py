@@ -585,46 +585,6 @@ def create_html(
         
         body_content += segment_html
 
-    # # Process transcript lines to build HTML content
-    # body_content = ""
-    # transcript_lines = input_text.strip().splitlines()
-    # for idx, line in enumerate(transcript_lines):
-    #     # Parse line
-    #     segment_start, speaker, text = parse_line(line)
-        
-    #     # If only one line is present
-    #     if len(transcript_lines) == 1:
-    #         segment_start = '00'
-    #         segment_end, speaker, text = parse_line(line)
-    #         start = convert_timestamp_to_ms(segment_start)
-    #         end = convert_timestamp_to_ms(segment_end)
-    #         if 'UNKNOWN' in speaker:
-    #             speaker_label = 'SXX'
-    #         else:
-    #             speaker_number = re.findall(r'\d+', speaker)[0]
-    #             speaker_label = f'S{speaker_number}'
-    #         anchor = f"ts_{start}_{end}_{speaker_label}"
-    #         segment_html = f'<p><a name="{anchor}"><span style="color:#78909C">[{segment_start}]</span> {speaker}: {text}</a></p>\n'
-    #     else:
-    #         segment_html = f'<p>{text}</p>\n'
-            
-    #     # Multiple lines
-    #     if segment_start and idx < len(transcript_lines) - 1:
-    #         segment_end, _, _ = parse_line(transcript_lines[idx + 1])
-    #         start = convert_timestamp_to_ms(segment_start)
-    #         end = convert_timestamp_to_ms(segment_end)
-    #         if 'UNKNOWN' in speaker:
-    #             speaker_label = 'SXX'
-    #         else:
-    #             speaker_number = re.findall(r'\d+', speaker)[0]
-    #             speaker_label = f'S{speaker_number}'
-    #         anchor = f"ts_{start}_{end}_{speaker_label}"
-    #         segment_html = f'<p><a name="{anchor}"><span style="color:#78909C">[{segment_start}]</span> {speaker}: {text}</a></p>\n'
-    #     else:
-    #         segment_html = f'<p>{text}</p>\n'
-    #     body_content += segment_html
-
-    # Combine header, body, and footer to form the final HTML output
     html_output = html_template.replace('{body_content}', body_content)
 
     return html_output
