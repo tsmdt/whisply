@@ -14,7 +14,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/tsmdt/whisply",
     install_requires=[
-        'typer==0.12.5',
+        'typer==0.15.2',
         'numpy==1.26.4',
         'faster-whisper==1.1.0',
         'ffmpeg-python==0.2.0',
@@ -25,16 +25,13 @@ setup(
         'pyannote.metrics==3.2.1',
         'pyannote.pipeline==3.0.1',
         'rich==13.7.1',
-        'torch==2.3.0',
-        'torch-audiomentations==0.11.1',
-        'torch-pitch-shift==1.2.4',
-        'torchaudio==2.3.0',
-        'torchmetrics==1.3.2',
+        'torch==2.6.0',
+        'torchaudio==2.6.0',
         'transformers==4.48.0',
         'validators==0.28.1',
         'yt-dlp==2025.1.15',
-        'whisperx==3.3.0',
-        'gradio==5.12.0'
+        'whisperx==3.3.1',
+        'gradio==5.23.0'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
