@@ -23,6 +23,7 @@ class ExportFormats(str, Enum):
     VTT = 'vtt'
     WEBVTT = 'webvtt'
     SRT = 'srt'
+    HTML = 'html'
     
     
 def determine_export_formats(
@@ -41,6 +42,7 @@ def determine_export_formats(
         available_formats.add(ExportFormats.TXT.value)
         if annotate:
             available_formats.add(ExportFormats.RTTM.value)
+            available_formats.add(ExportFormats.HTML.value)
         if subtitle:
             available_formats.add(ExportFormats.WEBVTT.value)
             available_formats.add(ExportFormats.VTT.value)
@@ -48,7 +50,7 @@ def determine_export_formats(
     else:
         if export_format in (ExportFormats.JSON, ExportFormats.TXT):
             available_formats.add(export_format.value)
-        elif export_format == ExportFormats.RTTM:
+        elif export_format in (ExportFormats.RTTM, ExportFormats.HTML):
             if annotate:
                 available_formats.add(export_format.value)
             else:
@@ -242,6 +244,18 @@ class OutputWriter:
             description='.rttm annotations',
             log_message='Saved .rttm annotations →'
         )
+        
+    def save_html(
+        self, 
+        html: str, 
+        filepath: Path
+        ) -> None:
+        self._save_file(
+            content=html,
+            filepath=filepath,
+            description='.html (noScribe compatible)',
+            log_message='Saved .html annotations →'
+        )
 
     def save_results(
         self,
@@ -358,9 +372,21 @@ class OutputWriter:
             written_filepaths.append(str(fout))
             result['written_files'] = written_filepaths
             self.save_json(result, filepath=fout)
+            
+        # Write noScribe compatible .html
+        if 'html' in export_formats:
+            audio_filepath = Path(result['input_filepath'])
+            for language, transcription in transcription_items:
+                fout = output_filepath.parent / f"{output_filepath.name}_{language}.html"
+                html = create_html(
+                    transcription,
+                    audio_filepath=audio_filepath,
+                    output_filepath=output_filepath
+                    ) 
+                self.save_html(html, filepath=fout)
+                written_filepaths.append(str(fout))
 
         return written_filepaths
-
 
 def create_subtitles(
     transcription_dict: dict, 
@@ -487,3 +513,118 @@ def dict_to_rttm(result: dict) -> dict:
         rttm_dict[lang] = rttm_content
 
     return rttm_dict
+
+def create_html(
+    transcription: dict, 
+    audio_filepath: Path, 
+    output_filepath: Path
+    ) -> None:
+    """
+    Save an HTML file that is compatible with noScribe's editor:
+    https://github.com/kaixxx/noScribe
+    """
+    from whisply.output_templates import NOSCRIBE_HTML_TEMPLATE
+    
+    # Helper function to parse a transcript line
+    def parse_line(line: str):
+        pattern = r'\[(.*?)\]\s+\[(.*?)\]\s+(.*)'
+        match = re.match(pattern, line)
+        if match:
+            timestamp, speaker, text = match.groups()
+            return timestamp, speaker, text
+        return None, None, line
+
+    # Helper function to convert a timestamp to milliseconds
+    def convert_timestamp_to_ms(timestamp: str) -> int:
+        h, m, s = timestamp.split(':')
+        s = s.split('.')[0]
+        return (int(h) * 3600 + int(m) * 60 + int(s)) * 1000
+
+    # Use the annotated txt as input
+    input_text = transcription.get('text_with_speaker_annotation', '')
+
+    # Replace placeholders in the HTML template
+    html_template = NOSCRIBE_HTML_TEMPLATE.replace('{transcription}', str(output_filepath))
+    html_template = html_template.replace('{audio_filepath}', str(audio_filepath))
+    
+    # Process transcript lines to build HTML content
+    body_content = ""
+    transcript_lines = input_text.strip().splitlines()
+    num_lines = len(transcript_lines)
+
+    for idx, line in enumerate(transcript_lines):
+        segment_start, speaker, text = parse_line(line)
+        
+        # If there's a following line or a single line, generate detailed HTML with an anchor
+        if num_lines == 1 or idx < num_lines - 1:
+            # For a single line, override segment_start with a default value
+            if num_lines == 1:
+                segment_start = '00:00:00'
+                segment_end, _, _ = parse_line(line)
+            else:
+                segment_end, _, _ = parse_line(transcript_lines[idx + 1])
+            
+            # Convert timestamps to ms
+            start = convert_timestamp_to_ms(segment_start)
+            end = convert_timestamp_to_ms(segment_end)
+            
+            # Set speaker labels
+            if 'UNKNOWN' in speaker:
+                speaker_label = 'SXX'
+            else:
+                speaker_number = re.findall(r'\d+', speaker)[0]
+                speaker_label = f'S{speaker_number}'
+                
+            # Build the anchor tag and HTML segment
+            anchor = f"ts_{start}_{end}_{speaker_label}"
+            segment_html = (f'<p><a name="{anchor}">'
+                            f'<span style="color:#78909C">[{segment_start}]</span> {speaker}: {text}'
+                            f'</a></p>\n')
+        else:
+            segment_html = f'<p>{text}</p>\n'
+        
+        body_content += segment_html
+
+    # # Process transcript lines to build HTML content
+    # body_content = ""
+    # transcript_lines = input_text.strip().splitlines()
+    # for idx, line in enumerate(transcript_lines):
+    #     # Parse line
+    #     segment_start, speaker, text = parse_line(line)
+        
+    #     # If only one line is present
+    #     if len(transcript_lines) == 1:
+    #         segment_start = '00'
+    #         segment_end, speaker, text = parse_line(line)
+    #         start = convert_timestamp_to_ms(segment_start)
+    #         end = convert_timestamp_to_ms(segment_end)
+    #         if 'UNKNOWN' in speaker:
+    #             speaker_label = 'SXX'
+    #         else:
+    #             speaker_number = re.findall(r'\d+', speaker)[0]
+    #             speaker_label = f'S{speaker_number}'
+    #         anchor = f"ts_{start}_{end}_{speaker_label}"
+    #         segment_html = f'<p><a name="{anchor}"><span style="color:#78909C">[{segment_start}]</span> {speaker}: {text}</a></p>\n'
+    #     else:
+    #         segment_html = f'<p>{text}</p>\n'
+            
+    #     # Multiple lines
+    #     if segment_start and idx < len(transcript_lines) - 1:
+    #         segment_end, _, _ = parse_line(transcript_lines[idx + 1])
+    #         start = convert_timestamp_to_ms(segment_start)
+    #         end = convert_timestamp_to_ms(segment_end)
+    #         if 'UNKNOWN' in speaker:
+    #             speaker_label = 'SXX'
+    #         else:
+    #             speaker_number = re.findall(r'\d+', speaker)[0]
+    #             speaker_label = f'S{speaker_number}'
+    #         anchor = f"ts_{start}_{end}_{speaker_label}"
+    #         segment_html = f'<p><a name="{anchor}"><span style="color:#78909C">[{segment_start}]</span> {speaker}: {text}</a></p>\n'
+    #     else:
+    #         segment_html = f'<p>{text}</p>\n'
+    #     body_content += segment_html
+
+    # Combine header, body, and footer to form the final HTML output
+    html_output = html_template.replace('{body_content}', body_content)
+
+    return html_output
