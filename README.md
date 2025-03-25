@@ -41,7 +41,7 @@
 
 * 👩‍💻 **CLI / App**: `whisply` can be run directly from CLI or as an app with a graphical user-interface (GUI).
 
-* ⚙️ **Export Formats**: Supports `.json`, `.txt`, `.txt (annotated)`, `.srt`, `.webvtt`, `.vtt`, and `.rttm`.
+* ⚙️ **Export Formats**: Supports `.json`, `.txt`, `.txt (annotated)`, `.srt`, `.webvtt`, `.vtt`, `.rttm` and `.html` (compatible with [noScribe's editor](https://github.com/kaixxx/noScribe)).
 
 ## Requirements
 
