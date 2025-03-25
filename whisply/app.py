@@ -116,7 +116,7 @@ def create_gradio_interface():
         # Handle export formats
         export_formats_map = {
             'standard': ['json', 'txt'],
-            'annotate': ['rttm', 'txt', 'json'],
+            'annotate': ['rttm', 'txt', 'json', 'html'],
             'subtitle': ['vtt', 'webvtt', 'srt', 'txt', 'json'],
             'translate': ['txt', 'json']
         }
