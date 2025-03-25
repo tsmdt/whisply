@@ -57,9 +57,6 @@ def create_gradio_interface():
         annotate = 'Annotate Speakers' in options
         translate = 'Translate to English' in options
         subtitle = 'Generate Subtitles' in options
-        
-        print(annotate)
-        print(translate)
 
         if (annotate or subtitle) and not hf_token:
             hf_token = os.getenv('HF_TOKEN')
@@ -79,169 +76,168 @@ def create_gradio_interface():
         progress = gr.Progress()
         progress(0)
 
-        # try:
-        
-        # Total steps calculation
-        steps_per_file = 5  # Number of steps per file
-        total_steps = steps_per_file * len(file)
-        current_step = 0
+        try:
+            # Total steps calculation
+            steps_per_file = 5  # Number of steps per file
+            total_steps = steps_per_file * len(file)
+            current_step = 0
 
-        # Save the uploaded file to a temporary directory
-        temp_dir = './app_uploads'
-        os.makedirs(temp_dir, exist_ok=True)
+            # Save the uploaded file to a temporary directory
+            temp_dir = './app_uploads'
+            os.makedirs(temp_dir, exist_ok=True)
 
-        temp_file_paths = []
-        for uploaded_file in file:
-            # Get the base name of the file to avoid issues with absolute paths
-            temp_file_name = os.path.basename(uploaded_file.name)
-            temp_file_path = os.path.join(temp_dir, temp_file_name)
+            temp_file_paths = []
+            for uploaded_file in file:
+                # Get the base name of the file to avoid issues with absolute paths
+                temp_file_name = os.path.basename(uploaded_file.name)
+                temp_file_path = os.path.join(temp_dir, temp_file_name)
 
-            # Copy the file from Gradio's temp directory to our local directory
-            shutil.copyfile(uploaded_file.name, temp_file_path)
-            temp_file_paths.append(temp_file_path)
+                # Copy the file from Gradio's temp directory to our local directory
+                shutil.copyfile(uploaded_file.name, temp_file_path)
+                temp_file_paths.append(temp_file_path)
 
-        # Adjust the device based on user selection
-        if device == 'auto':
-            device_selected = get_device()
-        elif device == 'gpu':
-            import torch
-            if torch.cuda.is_available():
-                device_selected = 'cuda:0'
-            else:
-                print("→ CUDA is not available. Falling back to auto device selection.")
+            # Adjust the device based on user selection
+            if device == 'auto':
                 device_selected = get_device()
-        else:
-            device_selected = device
-
-        # Handle export formats
-        export_formats_map = {
-            'standard': ['json', 'txt'],
-            'annotate': ['rttm', 'txt', 'json', 'html'],
-            'subtitle': ['vtt', 'webvtt', 'srt', 'txt', 'json'],
-            'translate': ['txt', 'json']
-        }
-
-        export_formats_list = set(export_formats_map['standard'])
-
-        if annotate:
-            export_formats_list.update(export_formats_map['annotate'])
-        if subtitle:
-            export_formats_list.update(export_formats_map['subtitle'])
-        if translate:
-            export_formats_list.update(export_formats_map['translate'])
-
-        export_formats_list = list(export_formats_list)
-
-        # Create an instance of TranscriptionHandler with the provided parameters
-        handler = TranscriptionHandler(
-            base_dir='./app_transcriptions',
-            model=model,
-            device=device_selected,
-            file_language=None if language == 'auto' else language,
-            annotate=annotate,
-            translate=translate,
-            subtitle=subtitle,
-            sub_length=int(sub_length) if subtitle else 5,
-            hf_token=hf_token,
-            verbose=False,
-            export_formats=export_formats_list
-        )
-
-        # Initialize processed_files list
-        handler.processed_files = []
-        for idx, filepath in enumerate(temp_file_paths):
-            filepath = Path(filepath)
-            
-            # Update progress
-            current_step += 1
-            progress(current_step / total_steps)
-
-            # Create and set output_dir and output_filepath
-            handler.output_dir = little_helper.set_output_dir(filepath, handler.base_dir)
-            output_filepath = handler.output_dir / filepath.stem
-
-            # Convert file format
-            filepath, audio_array = little_helper.check_file_format(
-                filepath=filepath,
-                del_originals=False
-                )
-            
-            # Update progress
-            current_step += 1
-            progress(current_step / total_steps)
-
-            # Detect file language
-            if not handler.file_language:
-                handler.detect_language(filepath, audio_array)
-                
-            # Update progress
-            current_step += 1
-            progress(current_step / total_steps)
-
-            # Transcription and speaker annotation
-            if handler.device == 'mps':
-                handler.model = models.set_supported_model(
-                    handler.model_provided,
-                    implementation='insane-whisper',
-                    translation=handler.translate
-                )
-                print(f'→ Using {handler.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{handler.model}"')
-                result_data = handler.transcribe_with_insane_whisper(filepath)
-
-            elif handler.device in ['cpu', 'cuda:0']:
-                if handler.annotate or handler.subtitle:
-                    handler.model = models.set_supported_model(
-                        handler.model_provided,
-                        implementation='whisperx',
-                        translation=handler.translate
-                    )
-                    print(f'→ Using {handler.device.upper()} and whisper🆇  with model "{handler.model}"')
-                    result_data = handler.transcribe_with_whisperx(filepath)
+            elif device == 'gpu':
+                import torch
+                if torch.cuda.is_available():
+                    device_selected = 'cuda:0'
                 else:
-                    handler.model = models.set_supported_model(
-                        handler.model_provided,
-                        implementation='faster-whisper',
-                        translation=handler.translate
-                    )
-                    print(f'→ Using {handler.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{handler.model}"')
-                    result_data = handler.transcribe_with_faster_whisper(filepath)
-                    
-            # Update progress
-            current_step += 1
-            progress(current_step / total_steps)
+                    print("→ CUDA is not available. Falling back to auto device selection.")
+                    device_selected = get_device()
+            else:
+                device_selected = device
 
-            result = {
-                'id': f'file_00{idx + 1}',
-                'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'input_filepath': str(Path(filepath).absolute()),
-                'output_filepath': str(Path(output_filepath).absolute()),
-                'written_files': None,
-                'device': handler.device,
-                'model': handler.model,
-                'transcription': result_data['transcription']['transcriptions'],
+            # Handle export formats
+            export_formats_map = {
+                'standard': ['json', 'txt'],
+                'annotate': ['rttm', 'txt', 'json', 'html'],
+                'subtitle': ['vtt', 'webvtt', 'srt', 'txt', 'json'],
+                'translate': ['txt', 'json']
             }
 
-            # Save results
-            result['written_files'] = output_utils.OutputWriter().save_results(
-                    result=result,
-                    export_formats=handler.export_formats
+            export_formats_list = set(export_formats_map['standard'])
+
+            if annotate:
+                export_formats_list.update(export_formats_map['annotate'])
+            if subtitle:
+                export_formats_list.update(export_formats_map['subtitle'])
+            if translate:
+                export_formats_list.update(export_formats_map['translate'])
+
+            export_formats_list = list(export_formats_list)
+
+            # Create an instance of TranscriptionHandler with the provided parameters
+            handler = TranscriptionHandler(
+                base_dir='./app_transcriptions',
+                model=model,
+                device=device_selected,
+                file_language=None if language == 'auto' else language,
+                annotate=annotate,
+                translate=translate,
+                subtitle=subtitle,
+                sub_length=int(sub_length) if subtitle else 5,
+                hf_token=hf_token,
+                verbose=False,
+                export_formats=export_formats_list
+            )
+
+            # Initialize processed_files list
+            handler.processed_files = []
+            for idx, filepath in enumerate(temp_file_paths):
+                filepath = Path(filepath)
+                
+                # Update progress
+                current_step += 1
+                progress(current_step / total_steps)
+
+                # Create and set output_dir and output_filepath
+                handler.output_dir = little_helper.set_output_dir(filepath, handler.base_dir)
+                output_filepath = handler.output_dir / filepath.stem
+
+                # Convert file format
+                filepath, audio_array = little_helper.check_file_format(
+                    filepath=filepath,
+                    del_originals=False
                     )
-            
-            # Update progress
-            current_step += 1
-            progress(current_step / total_steps)
+                
+                # Update progress
+                current_step += 1
+                progress(current_step / total_steps)
 
-            handler.processed_files.append(result)
+                # Detect file language
+                if not handler.file_language:
+                    handler.detect_language(filepath, audio_array)
+                    
+                # Update progress
+                current_step += 1
+                progress(current_step / total_steps)
 
-            if not handler.file_language_provided:
-                handler.file_language = None
+                # Transcription and speaker annotation
+                if handler.device == 'mps':
+                    handler.model = models.set_supported_model(
+                        handler.model_provided,
+                        implementation='insane-whisper',
+                        translation=handler.translate
+                    )
+                    print(f'→ Using {handler.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{handler.model}"')
+                    result_data = handler.transcribe_with_insane_whisper(filepath)
 
-        # except Exception as e:
-        #     print(f"→ Error during transcription: {e}")
-        #     yield f"Transcription Error: {e}", None
+                elif handler.device in ['cpu', 'cuda:0']:
+                    if handler.annotate or handler.subtitle:
+                        handler.model = models.set_supported_model(
+                            handler.model_provided,
+                            implementation='whisperx',
+                            translation=handler.translate
+                        )
+                        print(f'→ Using {handler.device.upper()} and whisper🆇  with model "{handler.model}"')
+                        result_data = handler.transcribe_with_whisperx(filepath)
+                    else:
+                        handler.model = models.set_supported_model(
+                            handler.model_provided,
+                            implementation='faster-whisper',
+                            translation=handler.translate
+                        )
+                        print(f'→ Using {handler.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{handler.model}"')
+                        result_data = handler.transcribe_with_faster_whisper(filepath)
+                        
+                # Update progress
+                current_step += 1
+                progress(current_step / total_steps)
 
-        # finally:
-        #     progress(100)
+                result = {
+                    'id': f'file_00{idx + 1}',
+                    'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'input_filepath': str(Path(filepath).absolute()),
+                    'output_filepath': str(Path(output_filepath).absolute()),
+                    'written_files': None,
+                    'device': handler.device,
+                    'model': handler.model,
+                    'transcription': result_data['transcription']['transcriptions'],
+                }
+
+                # Save results
+                result['written_files'] = output_utils.OutputWriter().save_results(
+                        result=result,
+                        export_formats=handler.export_formats
+                        )
+                
+                # Update progress
+                current_step += 1
+                progress(current_step / total_steps)
+
+                handler.processed_files.append(result)
+
+                if not handler.file_language_provided:
+                    handler.file_language = None
+
+        except Exception as e:
+            print(f"→ Error during transcription: {e}")
+            yield f"Transcription Error: {e}", None
+
+        finally:
+            progress(100)
 
         # Get the transcription results
         if handler and handler.processed_files:
