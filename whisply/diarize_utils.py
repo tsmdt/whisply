@@ -1,15 +1,9 @@
-# Code with additional changes from: https://github.com/Vaibhavs10/insanely-fast-whisper
-
 import requests
 import torch
 import numpy as np
 from torchaudio import functional as F
 from pyannote.audio import Pipeline
 from transformers.pipelines.audio_utils import ffmpeg_read
-from rich.progress import Progress, TimeElapsedColumn, SpinnerColumn, TextColumn
-import sys
-
-from whisply import little_helper
 
 # Code lifted from https://github.com/huggingface/speechbox/blob/main/src/speechbox/diarize.py
 # and from https://github.com/m-bain/whisperX/blob/main/whisperx/diarize.py
@@ -61,8 +55,13 @@ def preprocess_inputs(inputs):
 
     return inputs, diarizer_inputs
 
-
-def diarize_audio(diarizer_inputs, diarization_pipeline, num_speakers, min_speakers, max_speakers):
+def diarize_audio(
+        diarizer_inputs, 
+        diarization_pipeline, 
+        num_speakers, 
+        min_speakers, 
+        max_speakers
+        ) -> dict:
     diarization = diarization_pipeline(
         {"waveform": diarizer_inputs, "sample_rate": 16000},
         num_speakers=num_speakers,
@@ -80,8 +79,10 @@ def diarize_audio(diarizer_inputs, diarization_pipeline, num_speakers, min_speak
             }
         )
 
-    # diarizer output may contain consecutive segments from the same speaker (e.g. {(0 -> 1, speaker_1), (1 -> 1.5, speaker_1), ...})
-    # we combine these segments to give overall timestamps for each speaker's turn (e.g. {(0 -> 1.5, speaker_1), ...})
+    # diarizer output may contain consecutive segments from the same 
+    # speaker (e.g. {(0 -> 1, speaker_1), (1 -> 1.5, speaker_1), ...})
+    # we combine these segments to give overall timestamps for each 
+    # speaker's turn (e.g. {(0 -> 1.5, speaker_1), ...})
     new_segments = []
     prev_segment = cur_segment = segments[0]
 
@@ -116,42 +117,52 @@ def diarize_audio(diarizer_inputs, diarization_pipeline, num_speakers, min_speak
     return new_segments
 
 
-def post_process_segments_and_transcripts(new_segments, transcript, group_by_speaker) -> list:
-    # get the end timestamps for each chunk from the ASR output
-    end_timestamps = np.array(
-        [chunk["timestamp"][-1] if chunk["timestamp"][-1] is not None else sys.float_info.max for chunk in transcript])
+def post_process_segments_and_transcripts(
+        new_segments, 
+        transcript, 
+        group_by_speaker
+    ) -> list:
     segmented_preds = []
+    transcript_idx = 0
+    num_chunks = len(transcript)
 
-    # align the diarizer timestamps and the ASR timestamps
+    # Iterate through each diarization segment and assign transcript chunks 
+    # whose end timestamp falls within the segment
     for segment in new_segments:
-        # get the diarizer end timestamp
-        end_time = segment["segment"]["end"]
-        # find the ASR end timestamp that is closest to the diarizer's end timestamp and cut the transcript to here
-        upto_idx = np.argmin(np.abs(end_timestamps - end_time))
+        seg_start = segment["segment"]["start"]
+        seg_end = segment["segment"]["end"]
+        segment_chunks = []
+
+        # Collect transcript chunks until the chunk's end timestamp exceeds 
+        # the diarization segment's end
+        while (transcript_idx < num_chunks 
+               and 
+               transcript[transcript_idx]["timestamp"][1] <= seg_end):
+            segment_chunks.append(transcript[transcript_idx])
+            transcript_idx += 1
+
+        # If no transcript chunks were found for this segment, continue 
+        # to next segment
+        if not segment_chunks:
+            continue
 
         if group_by_speaker:
-            segmented_preds.append(
-                {
-                    "speaker": segment["speaker"],
-                    "text": "".join(
-                        [chunk["text"] for chunk in transcript[: upto_idx + 1]]
-                    ),
-                    "timestamp": (
-                        transcript[0]["timestamp"][0],
-                        transcript[upto_idx]["timestamp"][1],
-                    ),
-                }
-            )
+            # Combine the text from all transcript chunks within this segment
+            text = "".join(chunk["text"] for chunk in segment_chunks)
+            segmented_preds.append({
+                "speaker": segment["speaker"],
+                "text": text,
+                "timestamp": (
+                    segment_chunks[0]["timestamp"][0], 
+                    segment_chunks[-1]["timestamp"][1]
+                    )
+            })
         else:
-            for i in range(upto_idx + 1):
-                segmented_preds.append({"speaker": segment["speaker"], **transcript[i]})
-
-        # crop the transcripts and timestamp lists according to the latest timestamp (for faster argmin)
-        transcript = transcript[upto_idx + 1:]
-        end_timestamps = end_timestamps[upto_idx + 1:]
-
-        if len(end_timestamps) == 0:
-            break 
+            # Assign the speaker label to each transcript chunk in the segment
+            for chunk in segment_chunks:
+                chunk_copy = chunk.copy()
+                chunk_copy["speaker"] = segment["speaker"]
+                segmented_preds.append(chunk_copy)
 
     return segmented_preds
 
