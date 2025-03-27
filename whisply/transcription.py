@@ -10,10 +10,15 @@ from whisply.little_helper import FilePathProcessor
 from whisply.post_correction import Corrections
 
 # Set logging configuration
+log_dir = little_helper.ensure_dir(Path('./logs'))
+log_filename = f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log"
+log_file = f"{log_dir}/{log_filename}"
+
 logging.basicConfig(
-    filename=f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log", 
-    level=logging.INFO, format='%(asctime)s %(levelname)s [%(funcName)s]: %(message)s'
-    )
+    filename=log_file,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(funcName)s]: %(message)s",
+)
 
 class TranscriptionHandler:
     """
