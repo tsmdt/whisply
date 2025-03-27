@@ -240,6 +240,18 @@ def return_valid_fileformats() -> list[str]:
         '.vob'
         ]
 
+def load_audio_ffmpeg(filepath: str) -> np.ndarray:
+    try:
+        out, err = (
+            ffmpeg
+            .input(filepath)
+            .output('pipe:', format='f32le', acodec='pcm_f32le', ac=1, ar='16000')
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+    except ffmpeg.Error as e:
+        raise RuntimeError(f"Error loading audio with ffmpeg: {e.stderr.decode()}") from e
+    return np.frombuffer(out, np.float32)
+
 def check_file_format(
     filepath: Path, 
     del_originals: bool = True
@@ -266,9 +278,7 @@ def check_file_format(
     Returns:
         filepath (Path): filepath of the checked and / or converted audio file.
         np.ndarray: 1D NumPy array of the audio data.
-    """ 
-    import librosa
-    
+    """     
     # Define the converted file path
     new_filepath = filepath.with_name(f"{filepath.stem}_converted.wav")
     
@@ -320,9 +330,7 @@ def check_file_format(
 Please check 'whisply --list_formats' for all supported formats.")
     
     try:
-        # Load the audio file into a NumPy array
-        audio, _ = librosa.load(str(target_filepath), sr=16000, mono=True)
-        audio_array = audio.astype(np.float32)
+        audio_array = load_audio_ffmpeg(str(target_filepath))
     except Exception as e:
         raise RuntimeError(f"Failed to load audio from {target_filepath}: {e}") from e
     
