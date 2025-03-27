@@ -242,7 +242,7 @@ def return_valid_fileformats() -> list[str]:
 
 def load_audio_ffmpeg(filepath: str) -> np.ndarray:
     try:
-        out, err = (
+        out, _ = (
             ffmpeg
             .input(filepath)
             .output('pipe:', format='f32le', acodec='pcm_f32le', ac=1, ar='16000')
