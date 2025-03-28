@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/whisply.svg)](https://badge.fury.io/py/whisply)
 
-<img src="assets/whisply.png" width="30%">
+<img src="assets/whisply.png" width="25%">
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
@@ -13,6 +13,9 @@
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
+  - [Install `ffmpeg`](#install-ffmpeg)
+  - [Installation with `pip`](#installation-with-pip)
+  - [Installation from `source`](#installation-from-source)
   - [Nvidia GPU fix for Linux users (March 2025)](#nvidia-gpu-fix-for-linux-users-march-2025)
 - [Usage](#usage)
   - [CLI](#cli)
@@ -55,7 +58,7 @@
 
 ## Installation
 
-**1. Install `ffmpeg`**
+### Install `ffmpeg`
 
 ```shell
 # --- macOS ---
@@ -68,45 +71,68 @@ sudo apt-get install ffmpeg
 # --- Windows ---
 winget install Gyan.FFmpeg
 ```
+
 For more information you can visit the [FFmpeg website](https://ffmpeg.org/download.html).
 
-**2. Clone this repository and change to project folder**
+### Installation with `pip`
 
-```shell
-git clone https://github.com/tsmdt/whisply.git
-```
+1. Create a Python virtual environment
 
-```shell
-cd whisply
-```
+  ```shell
+  python3 -m venv venv
+  ```
 
-**3. Create a Python virtual environment**
+2. Activate the environment
 
-```shell
-python3 -m venv venv
-```
+  ```shell
+  # --- Linux & macOS ---
+  source venv/bin/activate
 
-**4. Activate the Python virtual environment**
+  # --- Windows ---
+  venv\Scripts\activate
+  ```
 
-```shell
-# --- Linux & macOS ---
-source venv/bin/activate
+3. Install whisply
 
-# --- Windows ---
-venv\Scripts\activate
-```
+  ```shell
+  pip install whisply
+  ```
 
-**5. Install `whisply` with `pip`**
+### Installation from `source`
 
-```shell
-pip install .
-```
+1. Clone this repository
 
-*or*
+  ```shell
+  git clone https://github.com/tsmdt/whisply.git
+  ```
 
-```shell
-pip install whisply
-```
+2. Change to project folder
+
+  ```shell
+  cd whisply
+  ```
+
+3. Create a Python virtual environment
+
+  ```shell
+  python3 -m venv venv
+  ```
+
+4. Activate the Python virtual environment
+
+  ```shell
+  # --- Linux & macOS ---
+  source venv/bin/activate
+
+  # --- Windows ---
+  venv\Scripts\activate
+  ```
+
+5. Install whisply
+
+  ```shell
+  pip install .
+  ```
 
 ### Nvidia GPU fix for Linux users (March 2025)
 <details>
