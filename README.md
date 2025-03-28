@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/whisply.svg)](https://badge.fury.io/py/whisply)
 
-<img src="assets/whisply.png" width="25%">
+<img src="assets/whisply.png" width="30%">
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
@@ -13,6 +13,7 @@
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
+  - [Nvidia GPU fix for Linux users (March 2025)](#nvidia-gpu-fix-for-linux-users-march-2025)
 - [Usage](#usage)
   - [CLI](#cli)
   - [App](#app)
@@ -48,33 +49,9 @@
 * [FFmpeg](https://ffmpeg.org/)
 * \>= Python3.10
 * GPU  processing requires:
-  * Nvidia GPU (CUDA: cuBLAS and cuDNN 8 for CUDA 12)
+  * Nvidia GPU (CUDA: cuBLAS and cuDNN for CUDA 12)
   * Apple Metal Performance Shaders (MPS) (Mac M1-M4)
 * Speaker annotation requires a [HuggingFace Access Token](https://huggingface.co/docs/hub/security-tokens)
-
-<details>
-<summary><b>GPU Fix</b> for <i>Could not load library libcudnn_ops_infer.so.8.</i> (<b>click to expand</b>)</summary>
-<br>If you use <b>whisply</b> on a Linux system with a Nivida GPU and get this error:<br><br>
-
-```shell
-"Could not load library libcudnn_ops_infer.so.8. Error: libcudnn_ops_infer.so.8: cannot open shared object file: No such file or directory"
-```
-
-Run the following line in your CLI:
-
-```shell
-export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'`
-```
-
-Add this line to your Python environment to make it permanent:
-
-```shell
-echo "export LD_LIBRARY_PATH=\`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + \":\" + os.path.dirname(nvidia.cudnn.lib.__file__))'\`" >> path/to/your/python/env
-```
-
-For more information please refer to the <a href="https://github.com/SYSTRAN/faster-whisper" target="_blank">faster-whisper</a> GitHub page.
-
-</details>
 
 ## Installation
 
@@ -131,6 +108,34 @@ pip install .
 pip install whisply
 ```
 
+### Nvidia GPU fix for Linux users (March 2025)
+<details>
+<summary><i>Could not load library libcudnn_ops_infer.so.8.</i> (<b>click to expand</b>)</summary>
+<br>If you use <b>whisply</b> on a Linux system with a Nvidia GPU and encounter this error:<br><br>
+
+```shell
+"Could not load library libcudnn_ops_infer.so.8. Error: libcudnn_ops_infer.so.8: cannot open shared object file: No such file or directory"
+```
+
+<b>Use the following steps to fix the issue</b>:
+
+1. In your activated python environment run `pip list` and check that `torch==2.4.0` and `torchaudio==2.4.0` are installed.
+2. If yes, run `pip install ctranslate2==4.5.0`. Otherwise install `torch==2.4.0` and `torchaudio==2.4.0` using pip first.
+3. Export the following environment variable to your shell:
+
+```shell
+export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'`
+```
+
+4. Add this line to your Python environment to make it permanent:
+
+```shell
+echo "export LD_LIBRARY_PATH=\`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + \":\" + os.path.dirname(nvidia.cudnn.lib.__file__))'\`" >> path/to/your/python/env/bin/activate
+```
+
+Find additional information at <a href="https://github.com/SYSTRAN/faster-whisper" target="_blank">faster-whisper</a>'s GitHub page.
+</details>
+
 ## Usage
 
 ### CLI
@@ -142,29 +147,31 @@ $ whisply
 
  WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --files               -f         TEXT                                Path to file, folder, URL or .list to process. [default: None]                                                                │
-│ --output_dir          -o         DIRECTORY                           Folder where transcripts should be saved. [default: transcriptions]                                                           │
-│ --device              -d         [auto|cpu|gpu|mps]                  Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4). [default: auto]                                         │
-│ --model               -m         TEXT                                Whisper model to use (List models via --list_models). [default: large-v3-turbo]                                               │
-│ --lang                -l         TEXT                                Language of provided file(s) ("en", "de") (Default: auto-detection). [default: None]                                          │
-│ --annotate            -a                                             Enable speaker annotation (Saves .rttm | Default: False).                                                                     │
-│ --num_speakers        -num       INTEGER                             Number of speakers to annotate (Default: auto-detection). [default: None]                                                     │
-│ --hf_token            -hf        TEXT                                HuggingFace Access token required for speaker annotation. [default: None]                                                     │
-│ --subtitle            -s                                             Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                                                             │
-│ --sub_length                     INTEGER                             Subtitle segment length in words. [default: 5]                                                                                │
-│ --translate           -t                                             Translate transcription to English (Default: False).                                                                          │
-│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt]  Choose the export format. [default: all]                                                                                      │
-│ --verbose             -v                                             Print text chunks during transcription (Default: False).                                                                      │
-│ --del_originals       -del                                           Delete original input files after file conversion. (Default: False)                                                           │
-│ --config                         PATH                                Path to configuration file. [default: None]                                                                                   │
-│ --post_correction     -post      PATH                                Path to YAML file for post-correction. [default: None]                                                                        │
-│ --launch_app          -app                                           Launch the web app instead of running standard CLI commands.                                                                  │
-│ --list_models                                                        List available models.                                                                                                        │
-│ --install-completion                                                 Install completion for the current shell.                                                                                     │
-│ --show-completion                                                    Show completion for the current shell, to copy it or customize the installation.                                              │
-│ --help                                                               Show this message and exit.                                                                                                   │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --files               -f         TEXT                                     Path to file, folder, URL or .list to process. [default: None]                   │
+│ --output_dir          -o         DIRECTORY                                Folder where transcripts should be saved. [default: transcriptions]              │
+│ --device              -d         [auto|cpu|gpu|mps]                       Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4).            │
+│                                                                           [default: auto]                                                                  │
+│ --model               -m         TEXT                                     Whisper model to use (List models via --list_models). [default: large-v3-turbo]  │
+│ --lang                -l         TEXT                                     Language of provided file(s) ("en", "de") (Default: auto-detection).             │
+│                                                                           [default: None]                                                                  │
+│ --annotate            -a                                                  Enable speaker annotation (Saves .rttm | Default: False).                        │
+│ --num_speakers        -num       INTEGER                                  Number of speakers to annotate (Default: auto-detection). [default: None]        │
+│ --hf_token            -hf        TEXT                                     HuggingFace Access token required for speaker annotation. [default: None]        │
+│ --subtitle            -s                                                  Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                │
+│ --sub_length                     INTEGER                                  Subtitle segment length in words. [default: 5]                                   │
+│ --translate           -t                                                  Translate transcription to English (Default: False).                             │
+│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt|html]  Choose the export format. [default: all]                                         │
+│ --verbose             -v                                                  Print text chunks during transcription (Default: False).                         │
+│ --del_originals       -del                                                Delete original input files after file conversion. (Default: False)              │
+│ --config                         PATH                                     Path to configuration file. [default: None]                                      │
+│ --post_correction     -post      PATH                                     Path to YAML file for post-correction. [default: None]                           │
+│ --launch_app          -app                                                Launch the web app instead of running standard CLI commands.                     │
+│ --list_models                                                             List available models.                                                           │
+│ --install-completion                                                      Install completion for the current shell.                                        │
+│ --show-completion                                                         Show completion for the current shell, to copy it or customize the installation. │
+│ --help                                                                    Show this message and exit.                                                      │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### App
