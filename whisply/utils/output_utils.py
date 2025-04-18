@@ -7,8 +7,8 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Dict, Tuple
 from rich import print
-from whisply import little_helper
-from whisply.post_correction import Corrections
+from whisply.utils import core_utils
+from whisply.utils.post_correction import Corrections
 
 # Set logging configuration
 logger = logging.getLogger('little_helper')
@@ -417,11 +417,11 @@ def create_subtitles(
         
         # Create .srt subtitles
         if type == 'srt':
-            start_time_str = little_helper.format_time(
+            start_time_str = core_utils.convert_seconds_to_hms(
                 start_time, 
                 delimiter=','
                 )
-            end_time_str = little_helper.format_time(
+            end_time_str = core_utils.convert_seconds_to_hms(
                 end_time, 
                 delimiter=','
                 )
@@ -430,11 +430,11 @@ def create_subtitles(
         
         # Create .webvtt subtitles    
         elif type in ['webvtt', 'vtt']:
-            start_time_str = little_helper.format_time(
+            start_time_str = core_utils.convert_seconds_to_hms(
                 start_time, 
                 delimiter='.'
                 )
-            end_time_str = little_helper.format_time(
+            end_time_str = core_utils.convert_seconds_to_hms(
                 end_time, 
                 delimiter='.'
                 )
@@ -451,15 +451,20 @@ def create_subtitles(
         
     return subtitle_text
 
+
 def dict_to_rttm(result: dict) -> dict:
     """
     Converts a transcription dictionary to RTTM file format.
+
+    Builds the RTTM based on word-level information if the 'words' key
+    is present and populated within the 'chunks'. Otherwise, builds the RTTM
+    based on the 'chunks' themselves, expecting either 'start'/'end' keys
+    or a 'timestamp': [start, end] key.
     """
     file_id = result.get('input_filepath', 'unknown_file')
     file_id = Path(file_id).stem
     rttm_dict = {}
 
-    # Iterate over each available language
     for lang, transcription in result.get('transcription', {}).items():
         lines = []
         current_speaker = None
@@ -467,25 +472,101 @@ def dict_to_rttm(result: dict) -> dict:
         speaker_end_time = None
 
         chunks = transcription.get('chunks', [])
+        segments_to_process = []
+        use_words = False
+        use_timestamp_key = False
 
-        # Collect all words from chunks
-        all_words = []
-        for chunk in chunks:
-            words = chunk.get('words', [])
-            all_words.extend(words)
+        # Determine if use chunk or word-level data
+        if chunks:
+            # Check for word level
+            first_chunk = chunks[0] if isinstance(chunks[0], dict) else {}
+            first_chunk_words = first_chunk.get('words')
+            if first_chunk_words is not None and isinstance(first_chunk_words, list) and first_chunk_words:
+                use_words = True
+            # Check if chunks have a 'timestamp' key
+            elif (
+                'timestamp' 
+                in first_chunk 
+                and isinstance(first_chunk.get('timestamp'), list) 
+                and len(first_chunk.get('timestamp')) 
+                == 2
+                ):
+                use_timestamp_key = True
+            else:
+                print('→ No timestamps found in dct for .rttm creation.')
 
-        # Sort all words by their start time
-        all_words.sort(key=lambda w: w.get('start', 0.0))
+        # Word level
+        if use_words:
+            all_words = []
+            for chunk in chunks:
+                if isinstance(chunk, dict):
+                    words = chunk.get('words', [])
+                    all_words.extend([w for w in words if isinstance(w, dict)])
+            all_words.sort(key=lambda w: w.get('start', float('inf'))) # Sort Nones last
+            segments_to_process = all_words
+        
+        # Chunk level
+        elif chunks:
+            valid_chunks = []
+            for c in chunks:
+                if not isinstance(c, dict):
+                    continue
+                if use_timestamp_key:
+                    ts = c.get('timestamp')
+                    if (
+                        isinstance(ts, list) 
+                        and len(ts) == 2 
+                        and isinstance(ts[0], (int, float)) 
+                        and isinstance(ts[1], (int, float))
+                        ):
+                         valid_chunks.append(c)
+                elif c.get('start') is not None and c.get('end') is not None:
+                     valid_chunks.append(c)
+                else:
+                    print(f'→ Error during .rttm creation: no valid timestamp for {c}')
 
-        for word_info in all_words:
-            speaker = word_info.get('speaker', 'SPEAKER_00')
-            word_start = word_info.get('start', 0.0)
-            word_end = word_info.get('end', word_start)
+            # Sort valid chunks by their start time
+            if use_timestamp_key:
+                valid_chunks.sort(key=lambda c: c['timestamp'][0])
+            else:
+                valid_chunks.sort(key=lambda c: c.get('start', float('inf')))
 
+            segments_to_process = valid_chunks
+
+        # Process the chosen segments
+        for segment_info in segments_to_process:
+            speaker = segment_info.get('speaker', 'SPEAKER_00')
+            start_time = None
+            end_time = None
+
+            # Extract start and end times
+            if use_words:
+                start_time = segment_info.get('start')
+                end_time = segment_info.get('end')
+            elif use_timestamp_key:
+                ts = segment_info.get('timestamp')
+                if isinstance(ts, list) and len(ts) == 2:
+                    start_time = ts[0]
+                    end_time = ts[1]
+            else:
+                start_time = segment_info.get('start')
+                end_time = segment_info.get('end')
+
+            # Skip segment if essential timing info is missing or invalid
+            if (
+                start_time is None 
+                or end_time is None 
+                or not isinstance(start_time, (int, float)) 
+                or not isinstance(end_time, (int, float))
+                ):
+                print(f"Warning: Skipping segment due to missing/invalid time: {segment_info}")
+                continue
+
+            # RTTM: merge consecutive segments from the same speaker
             if speaker != current_speaker:
-                # If there is a previous speaker segment, write it to the RTTM
                 if current_speaker is not None:
                     duration = speaker_end_time - speaker_start_time
+                    duration = max(0.0, duration)
                     rttm_line = (
                         f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
                         f"<NA> <NA> {current_speaker} <NA>"
@@ -494,15 +575,15 @@ def dict_to_rttm(result: dict) -> dict:
 
                 # Start a new speaker segment
                 current_speaker = speaker
-                speaker_start_time = word_start
-                speaker_end_time = word_end
+                speaker_start_time = start_time
+                speaker_end_time = end_time
             else:
-                # Extend the current speaker segment
-                speaker_end_time = max(speaker_end_time, word_end)
+                speaker_end_time = max(speaker_end_time, end_time)
 
-        # Write the last speaker segment to the RTTM
+        # Write the very last speaker segment to the RTTM
         if current_speaker is not None:
             duration = speaker_end_time - speaker_start_time
+            duration = max(0.0, duration)
             rttm_line = (
                 f"SPEAKER {file_id} 1 {speaker_start_time:.3f} {duration:.3f} "
                 f"<NA> <NA> {current_speaker} <NA>"
@@ -511,7 +592,6 @@ def dict_to_rttm(result: dict) -> dict:
 
         rttm_content = "\n".join(lines)
         rttm_dict[lang] = rttm_content
-
     return rttm_dict
 
 def create_html(
@@ -523,7 +603,7 @@ def create_html(
     Save an HTML file that is compatible with noScribe's editor:
     https://github.com/kaixxx/noScribe
     """
-    from whisply.output_templates import NOSCRIBE_HTML_TEMPLATE
+    from whisply.templates.output_templates import NOSCRIBE_HTML_TEMPLATE
     
     # Helper function to parse a transcript line
     def parse_line(line: str):
@@ -536,7 +616,7 @@ def create_html(
 
     # Helper function to convert a timestamp to milliseconds
     def convert_timestamp_to_ms(timestamp: str) -> int:
-        h, m, s = timestamp.split(':')
+        h, m, s, *_ = timestamp.split(':')
         s = s.split('.')[0]
         return (int(h) * 3600 + int(m) * 60 + int(s)) * 1000
 
@@ -571,9 +651,11 @@ def create_html(
             # Set speaker labels
             if 'UNKNOWN' in speaker:
                 speaker_label = 'SXX'
-            else:
+            elif 'SPEAKER' in speaker:
                 speaker_number = re.findall(r'\d+', speaker)[0]
                 speaker_label = f'S{speaker_number}'
+            else:
+                speaker_label = speaker
                 
             # Build the anchor tag and HTML segment
             anchor = f"ts_{start}_{end}_{speaker_label}"

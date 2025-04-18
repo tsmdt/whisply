@@ -6,8 +6,7 @@ import tempfile
 
 from datetime import datetime
 from pathlib import Path
-from whisply import output_utils
-from whisply.app_helpers import CSS, LANGUAGES
+from whisply.utils import app_utils, core_utils, output_utils
 
 
 def zip_files(file_paths: list[str]) -> str:
@@ -49,8 +48,8 @@ def create_gradio_interface():
         return device
 
     def transcribe(file, model, device, language, options, hf_token, sub_length):
-        from whisply.transcription import TranscriptionHandler
-        from whisply import little_helper, models
+        from whisply.core import LocalService
+        from whisply.models import models
 
         if not options:
             options = []
@@ -128,8 +127,8 @@ def create_gradio_interface():
 
             export_formats_list = list(export_formats_list)
 
-            # Create an instance of TranscriptionHandler with the provided parameters
-            handler = TranscriptionHandler(
+            # Create an instance of LocalService with the provided parameters
+            handler = LocalService(
                 base_dir='./app_transcriptions',
                 model=model,
                 device=device_selected,
@@ -153,11 +152,11 @@ def create_gradio_interface():
                 progress(current_step / total_steps)
 
                 # Create and set output_dir and output_filepath
-                handler.output_dir = little_helper.set_output_dir(filepath, handler.base_dir)
+                handler.output_dir = core_utils.set_output_dir(filepath, handler.base_dir)
                 output_filepath = handler.output_dir / filepath.stem
 
                 # Convert file format
-                filepath, audio_array = little_helper.check_file_format(
+                filepath, audio_array = core_utils.check_file_format(
                     filepath=filepath,
                     del_originals=False
                     )
@@ -273,7 +272,7 @@ def create_gradio_interface():
     )
 
     # Build the Gradio Blocks interface
-    with gr.Blocks(theme=theme, css=CSS) as app:
+    with gr.Blocks(theme=theme, css=app_utils.CSS) as app:
         gr.Markdown("# whisply 💬")
         gr.Markdown("""
         Transcribe, translate, annotate, and subtitle audio and video files with \
@@ -308,7 +307,7 @@ def create_gradio_interface():
                         info='Whisper model for the transcription.'
                     )
                     language_dropdown = gr.Dropdown(
-                    choices=sorted(LANGUAGES.keys()),
+                    choices=sorted(app_utils.LANGUAGES.keys()),
                     label="Language",
                     value='auto',
                     info="**auto** = auto-detection"
@@ -391,9 +390,9 @@ def create_gradio_interface():
     
     return app
     
-def main():
+def start_app():
     interface = create_gradio_interface()
     interface.launch()
 
 if __name__ == "__main__":
-    main()
+    start_app()

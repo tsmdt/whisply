@@ -1,11 +1,10 @@
 import re
 import logging
 import yt_dlp as url_downloader
-
 from pathlib import Path
 from datetime import datetime
 
-from whisply import little_helper
+from whisply.utils import core_utils
 
 
 # Set logging configuration
@@ -40,7 +39,7 @@ def download_url(url: str, downloads_dir: Path) -> Path:
         >>> download_url("https://www.youtube.com/watch?v=example", Path("/downloads"))
         Path('/downloads/example.wav')
     """
-    little_helper.ensure_dir(downloads_dir)
+    core_utils.ensure_dir(downloads_dir)
     
     temp_filename = f"temp_{datetime.now().strftime('%Y%m%d_%H_%M_%S')}"
     options = {

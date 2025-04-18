@@ -1,16 +1,17 @@
 {
-    "files": "./files/my_files.list",
-    "output_dir": "./transcriptions",
+    "service": "llm",
+    "model": "models/gemini-2.0-flash-001",
+    "files": "./test.list",
+    "output_dir": "./transcriptions/config_test",
     "device": "auto",
-    "model": "large-v3-turbo",
     "lang": null,
-    "annotate": false,
-    "hf_token": "hf_.......",
+    "annotate": true,
+    "hf_token": null,
     "translate": false,
-    "subtitle": false,
+    "subtitle": false, 
     "sub_length": 10,
     "export": "txt",
     "verbose": false,
     "del_originals": false,
-    "post_correction": "my_corrections.yaml"
+    "post_correction": "./examples/post_correction.yaml"
 }

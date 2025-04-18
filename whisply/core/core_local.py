@@ -1,29 +1,23 @@
-import logging
 import time
+import logging
+import typer
+from dataclasses import dataclass, field
+from typing import Optional
 from pathlib import Path
 from datetime import datetime
 from functools import partial
 from rich import print
 
-from whisply import little_helper, output_utils, models
-from whisply.little_helper import FilePathProcessor
-from whisply.post_correction import Corrections
+from whisply.core import BaseService
+from whisply.models import models
+from whisply.utils import core_utils, output_utils
 
-# Set logging configuration
-log_dir = little_helper.ensure_dir(Path('./logs'))
-log_filename = f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log"
-log_file = f"{log_dir}/{log_filename}"
 
-logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(funcName)s]: %(message)s",
-)
-
-class TranscriptionHandler:
+@dataclass(kw_only=True)
+class LocalService(BaseService):
     """
-    Handles transcription and diarization of audio/video files using various 
-    Whisper-based models.
+    Handles local transcription and diarization of audio/video files using 
+    various Whisper-based models.
 
     This class leverages different implementations of OpenAI's Whisper models 
     (whisperX, insanely-fast-whisper, faster-whisper) to transcribe audio and 
@@ -32,132 +26,42 @@ class TranscriptionHandler:
     in multiple formats. It is capable of processing single files, directories, 
     URLs, and lists of files, providing flexibility for diverse transcription 
     needs.
-
-    Args:
-        base_dir (str, optional): Directory to store transcription outputs. 
-            Defaults to './transcriptions'.
-        model (str, optional): Whisper model variant to use (e.g., 'large-v2'). 
-            Defaults to 'large-v3-turbo'.
-        device (str, optional): Compute device ('cpu', 'cuda', etc.). 
-            Defaults to 'cpu'.
-        file_language (str, optional): Language of the input audio. 
-            If not provided, language detection is performed.
-        annotate (bool, optional): Enable speaker diarization. 
-            Defaults to False.
-        hf_token (str, optional): Hugging Face token for accessing restricted  
-            models or features.
-        subtitle (bool, optional): Generate subtitles with word-level timestamps. 
-            Defaults to False.
-        sub_length (int, optional): Maximum number of words per subtitle chunk. 
-            Required if subtitle is True.
-        translate (bool, optional): Translate transcription to English if the 
-            original language is different. Defaults to False.
-        verbose (bool, optional): Enable detailed logging and output. 
-            Defaults to False.
-        export_formats (str or list, optional): Formats to export transcriptions 
-            (e.g., 'json', 'srt'). Defaults to 'all'.
-
-    Attributes:
-        base_dir (Path): Directory for storing transcriptions.
-        device (str): Compute device in use.
-        file_language (str or None): Detected or specified language of the 
-            audio.
-        annotate (bool): Indicates if speaker diarization is enabled.
-        translate (bool): Indicates if translation is enabled.
-        subtitle (bool): Indicates if subtitle generation is enabled.
-        verbose (bool): Indicates if verbose mode is active.
-        export_formats (str or list): Selected formats for exporting 
-            transcriptions.
-        processed_files (list): List of processed file information and results.
-
-    Methods:
-        get_filepaths(filepath: str):
-            Retrieves and validates file paths from various input types.
-        
-        detect_language(file: Path, audio_array) -> str:
-            Detects the language of the given audio file.
-        
-        process_files(files: list):
-            Processes a list of audio files for transcription and diarization.
-        
-        transcribe_with_whisperx(filepath: Path) -> dict:
-            Transcribes an audio file using the whisperX implementation.
-        
-        transcribe_with_insane_whisper(filepath: Path) -> dict:
-            Transcribes an audio file using the insanely-fast-whisper 
-            implementation.
-        
-        transcribe_with_faster_whisper(filepath: Path, num_workers: int = 1) 
-            -> dict:
-            Transcribes an audio file using the faster-whisper implementation.
-        
-        adjust_word_chunk_length(result: dict) -> dict:
-            Splits transcription text into chunks based on a maximum word 
-            count.
-        
-        to_transcription_dict(insanely_annotation: list[dict]) -> dict:
-            Converts speaker-annotated results into a standardized dictionary.
-        
-        to_whisperx(transcription_result: dict) -> dict:
-            Normalizes transcription results to the whisperX format.
-        
-        create_text_with_speakers(transcription_dict: dict, 
-            delimiter: str = '.') -> dict:
-            Inserts speaker labels into the transcription text upon speaker 
-            changes.
     """
-    def __init__(
-        self, 
-        base_dir='./transcriptions', 
-        model='large-v3-turbo', 
-        device='cpu', 
-        file_language=None, 
-        annotate=False,
-        num_speakers=None,
-        hf_token=None, 
-        subtitle=False, 
-        sub_length=None, 
-        translate=False, 
-        verbose=False,
-        del_originals=False,
-        corrections=Corrections,
-        export_formats='all'
-    ):
-        self.base_dir = little_helper.ensure_dir(Path(base_dir))
-        self.file_formats = little_helper.return_valid_fileformats()
-        self.device = device
-        self.file_language = file_language
-        self.file_language_provided = file_language is not None
-        self.model = None
-        self.model_provided = model
-        self.annotate = annotate
-        self.num_speakers = num_speakers
-        self.translate = translate
-        self.hf_token = hf_token
-        self.subtitle = subtitle
-        self.sub_length = sub_length
-        self.verbose = verbose
-        self.del_originals = del_originals
-        self.corrections = corrections
-        self.export_formats = export_formats
-        self.metadata = self._collect_metadata()
-        self.filepaths = []
-        self.output_dir = None
-        self.processed_files = []
+    device: str = 'cpu'
+    num_speakers: Optional[int] = None
+    hf_token: Optional[str] = None
+    del_originals: bool = False
+    _hf_token_internal: Optional[str] = field(init=False, default=None, repr=False)
 
-    def _collect_metadata(self):
-        return {
-            'output_dir': str(self.base_dir),
-            'file_language': self.file_language,
-            'model': self.model_provided,
+    def __post_init__(self):
+        """
+        Loads .env, sets up logging, resolves common keys.
+        """
+        # Logging
+        super().__post_init__()
+        logging.info(f"Local trascription service instantiated.")
+
+        # HugginFace access token for speaker annotation
+        if self.hf_token or self.annotate:
+            self._hf_token_internal = self._resolve_and_persist_api_key(
+                cli_provided_key=self.hf_token,
+                env_var_name='HF_TOKEN',
+                service_name='Hugging Face'
+            )
+            if not self._hf_token_internal:
+                print('→ HuggingFace access token required for speaker annotation.')
+                print('→ Please provide a token via --hf_token / -hf.')
+                raise typer.Exit()
+
+        # Update metadata
+        self.metadata.update({
             'device': self.device,
-            'annotate': self.annotate,
             'num_speakers': self.num_speakers,
-            'translate': self.translate,
-            'subtitle': self.subtitle,
-            'sub_length': self.sub_length
-            }
-    
+            'hf_token_provided': bool(self.hf_token),
+            'del_originals': self.del_originals,
+            'has_corrections': self.corrections is not None
+        })
+
     def adjust_word_chunk_length(self, result: dict) -> dict:
         """
         Generates text chunks based on the maximum number of words.
@@ -286,7 +190,7 @@ class TranscriptionHandler:
                 for word_info in words:
                     speaker = word_info.get('speaker')
                     word = word_info.get('word', '')
-                    start_timestamp = little_helper.format_time(
+                    start_timestamp = core_utils.convert_seconds_to_hms(
                         word_info.get('start'), 
                         delimiter
                         )
@@ -478,7 +382,7 @@ class TranscriptionHandler:
             task='transcribe', 
             language=self.file_language
             )
-        transcription_result = little_helper.run_with_progress(
+        transcription_result = core_utils.run_with_progress(
             description=f"[cyan]→ Transcribing ({'CUDA' if self.device == 'cuda:0' else 'CPU'}) [bold]{filepath.name}",
             task=transcription_task
         )
@@ -489,7 +393,7 @@ class TranscriptionHandler:
                 whisperx_annotation, 
                 transcription_result
                 )
-            transcription_result = little_helper.run_with_progress(
+            transcription_result = core_utils.run_with_progress(
             description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
             task=annotation_task
         )
@@ -516,7 +420,7 @@ class TranscriptionHandler:
                 task='translate', 
                 language='en'
                 )
-            translation_result = little_helper.run_with_progress(
+            translation_result = core_utils.run_with_progress(
                 description=f"[dark_blue]→ Translating ({'CUDA' if self.device == 'cuda:0' else 'CPU'}) [bold]{filepath.name}",
                 task=translation_task
             )
@@ -527,7 +431,7 @@ class TranscriptionHandler:
                     whisperx_annotation, 
                     translation_result
                     )
-                translation_result = little_helper.run_with_progress(
+                translation_result = core_utils.run_with_progress(
                 description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
                 task=annotation_task
             )
@@ -572,7 +476,7 @@ class TranscriptionHandler:
         import torch
         from transformers import pipeline
         from transformers import logging as hf_logger
-        from whisply import diarize_utils
+        from whisply.utils import diarize_utils
         
         hf_logger.set_verbosity_error()
         
@@ -625,14 +529,14 @@ class TranscriptionHandler:
                 return transcription_result
              
             # Transcription
-            transcription_result = little_helper.run_with_progress(
+            transcription_result = core_utils.run_with_progress(
                 description=f"[cyan]→ Transcribing ({self.device.upper()}) [bold]{filepath.name}",
                 task=transcription_task
             )
             
             # Speaker annotation
             if self.annotate:
-                transcription_result = little_helper.run_with_progress(
+                transcription_result = core_utils.run_with_progress(
                     description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
                     task=partial(
                         insane_whisper_annotation,
@@ -670,14 +574,14 @@ class TranscriptionHandler:
                     return translation_result
                 
                 # Run the translation task
-                translation_result = little_helper.run_with_progress(
+                translation_result = core_utils.run_with_progress(
                     description=f"[dark_blue]→ Translating ({self.device.upper()}) [bold]{filepath.name}",
                     task=translation_task
                 )
                 
                 # Speaker annotation
                 if self.annotate:
-                    translation_result = little_helper.run_with_progress(
+                    translation_result = core_utils.run_with_progress(
                         description=f"[purple]→ Annotating ({self.device.upper()}) [bold]{filepath.name}",
                         task=partial(
                             insane_whisper_annotation,
@@ -778,7 +682,7 @@ class TranscriptionHandler:
             return chunks
                 
         # Add progress bar and run the transcription task
-        chunks = little_helper.run_with_progress(
+        chunks = core_utils.run_with_progress(
             description=f"[cyan]→ Transcribing ({self.device.upper()}) [bold]{filepath.name}",
             task=transcription_task
         )
@@ -823,7 +727,7 @@ class TranscriptionHandler:
                 return translation_chunks
             
             # Add progress bar and run the translation task
-            translation_chunks = little_helper.run_with_progress(
+            translation_chunks = core_utils.run_with_progress(
                 description=f"[dark_blue]→ Translating ({self.device.upper()}) [bold]{filepath.name}",
                 task=translation_task
             )
@@ -860,7 +764,7 @@ class TranscriptionHandler:
             lang, score, _ = lang_detection_model.detect_language(audio_array)
             return lang, score
         
-        lang, score = little_helper.run_with_progress(
+        lang, score = core_utils.run_with_progress(
             description=f"[dark_goldenrod]→ Detecting language for [bold]{filepath.name}",
             task=run_language_detection                  
         )    
@@ -889,9 +793,10 @@ class TranscriptionHandler:
         logging.info(f"Provided parameters for processing: {self.metadata}")
         
         # Get filepaths
-        filepath_handler = FilePathProcessor(self.file_formats)
+        filepath_handler = core_utils.FilePathProcessor(self.file_formats)
         [filepath_handler.get_filepaths(f) for f in files]            
         self.filepaths = filepath_handler.filepaths
+
         
         # Process filepaths
         logging.info(f"Processing files: {self.filepaths}")
@@ -900,11 +805,11 @@ class TranscriptionHandler:
         for idx, filepath in enumerate(self.filepaths):      
                   
             # Create and set output_dir and output_filepath
-            self.output_dir = little_helper.set_output_dir(filepath, self.base_dir)
+            self.output_dir = core_utils.set_output_dir(filepath, self.base_dir)
             output_filepath = self.output_dir / Path(filepath).stem
             
             # Convert file format 
-            filepath, audio_array = little_helper.check_file_format(
+            filepath, audio_array = core_utils.check_file_format(
                 filepath=filepath,
                 del_originals=self.del_originals
                 )

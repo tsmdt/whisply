@@ -4,6 +4,9 @@
 /files*
 /legacy
 /venv*
+/log*
+__pycache__/
 .vscode
 .DS_Store
+.env
 *.log
