@@ -26,11 +26,11 @@ setup(
         'pyannote.pipeline==3.0.1',
         'whisperx==3.3.1',
         'rich==13.7.1',
-        'torch==2.4.0',
-        'torchaudio==2.4.0',
+        'torch==2.7.0',
+        'torchaudio==2.7.0',
         'transformers==4.48.0',
         'validators==0.28.1',
-        'yt-dlp==2025.3.26',
+        'yt-dlp==2025.4.30',
         'gradio==5.23.0'
     ],
     classifiers=[
