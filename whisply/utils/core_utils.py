@@ -438,7 +438,27 @@ def set_and_validate_dotenv():
     
     return dotenv_path
 
-def update_dotenv_configuration(
+def validate_dotenv_config() -> bool:
+    """
+    Validate .env config file.
+    """
+    provider = os.getenv('LLM_PROVIDER')
+    api_key = os.getenv(f'{provider.upper()}_API_KEY')
+    model = os.getenv(f'LLM_MODEL_{provider.upper()}')
+
+    if not provider:
+        print(f'[blue1]→ No LLM provider configured. Use "whisply llm config [provider]"')
+        raise typer.Exit()
+    if not api_key:
+        print(f'[blue1]→ No API key found for "{provider}". Use "whisply llm config --api_key"')
+        raise typer.Exit()
+    if not model:
+        print(f'[blue1]→ No model configured. Use "whisply llm config --model"')
+        raise typer.Exit()
+    
+    return True
+
+def update_dotenv_config(
         provider: core_utils.LLMProviders,
         model: Optional[str],
         api_key: Optional[str],
@@ -456,30 +476,7 @@ def update_dotenv_configuration(
 
     # Print config
     if show:
-        print("[bold]... Current LLM Configuration:")
-        active_provider = os.getenv("LLM_PROVIDER")
-
-        if not active_provider:
-            print("→ No active LLM provider set.")
-            print("→ Use: [bold]whisply llm config <provider_name>[/bold]")
-            raise typer.Exit()
-
-        # Construct provider-specific keys
-        provider_upper = active_provider.upper()
-        model_key_name = f"LLM_MODEL_{provider_upper}"
-        api_key_name = f"{provider_upper}_API_KEY"
-
-        current_model = os.getenv(model_key_name)
-        api_key_value = os.getenv(api_key_name)
-        api_key_display = "Not set"
-        if api_key_value:
-            api_key_display = f"{api_key_value[:3]}...{api_key_value[-3:]}"
-
-        print(f"[blue1]... Active Provider:[bold] {active_provider}")
-        print(f"[blue1]... Model ({model_key_name}):[bold] {current_model or 'Not set'}")
-        print(f"[blue1]... API Key ({api_key_name}):[bold] {api_key_display}")
-
-        raise typer.Exit()
+        print_llm_config()
 
     # Get LLM provider
     provider_to_configure = None
@@ -499,7 +496,7 @@ def update_dotenv_configuration(
     if provider:
         key_name_active_provider = "LLM_PROVIDER"
         set_key(dotenv_path, key_name_active_provider, provider.value)
-        print(f"→ Set active provider {key_name_active_provider}={provider.value}")
+        print_llm_config()
         config_changed = True
 
     # 2. Set model for the active provider
@@ -509,7 +506,7 @@ def update_dotenv_configuration(
             raise typer.Exit(code=1)
         key_name_model = f"LLM_MODEL_{provider_to_configure.upper()}"
         set_key(dotenv_path, key_name_model, model)
-        print(f"[blue1]→ Set model for {provider_to_configure}: [bold]{key_name_model}={model}")
+        print_llm_config()
         config_changed = True
 
     # 3. Set API key for the active provider
@@ -519,11 +516,39 @@ def update_dotenv_configuration(
             raise typer.Exit(code=1)
         key_name_api_key = f"{provider_to_configure.upper()}_API_KEY"
         set_key(dotenv_path, key_name_api_key, api_key)
-        print(f"[blue1]→ Set API key for {provider_to_configure}: \
-{key_name_api_key}=[bold]{api_key[:3]}...{api_key[-3:]}[/]") # Masked api_key
+        print_llm_config()
         config_changed = True
 
     return config_changed
+
+def print_llm_config() -> None:
+    """
+    Prints the current LLM configuration from the .env file.
+    """
+    print("[bold]... Current LLM Configuration:")
+    active_provider = os.getenv("LLM_PROVIDER")
+
+    if not active_provider:
+        print("→ No active LLM provider set.")
+        print("→ Use: [bold]whisply llm config <provider_name>[/bold]")
+        raise typer.Exit()
+
+    # Construct provider-specific keys
+    provider_upper = active_provider.upper()
+    model_key_name = f"LLM_MODEL_{provider_upper}"
+    api_key_name = f"{provider_upper}_API_KEY"
+
+    current_model = os.getenv(model_key_name)
+    api_key_value = os.getenv(api_key_name)
+    api_key_display = "Not set"
+    if api_key_value:
+        api_key_display = f"{api_key_value[:3]}...{api_key_value[-3:]}"
+
+    print(f"[blue1]... Active Provider:[bold] {active_provider}")
+    print(f"[blue1]... Model ({model_key_name}):[bold] {current_model or 'Not set'}")
+    print(f"[blue1]... API Key ({api_key_name}):[bold] {api_key_display}")
+
+    raise typer.Exit()
 
 def return_valid_fileformats() -> list[str]:
     return [

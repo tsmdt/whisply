@@ -293,7 +293,7 @@ running LLM transcription with: [bold]pip install "whisply\\[llm]"[/bold]')
         raise typer.Exit(code=1)
 
     # Load and update .env params
-    config_changed = core_utils.update_dotenv_configuration(
+    config_changed = core_utils.update_dotenv_config(
         provider=provider,
         model=model,
         api_key=api_key,
@@ -374,59 +374,59 @@ running LLM transcription with: [bold]pip install "whisply\\[llm]"[/bold]')
 
     # Load env
     dotenv_path = core_utils.set_and_validate_dotenv()
-
-    # Load .env params
     load_dotenv(dotenv_path=dotenv_path, override=True)
-    provider = os.getenv('LLM_PROVIDER')
-    api_key = os.getenv(f'{provider.upper()}_API_KEY')
-    model = os.getenv(f'LLM_MODEL_{provider.upper()}')
-
-    if not (provider or api_key or model):
-        print(f'→ Please configure your LLM configuration first.')
-        print(f'→ Use "whisply llm config"')
-        typer.Exit()
-
-    # Determine the ExportFormats
-    export_formats = output_utils.determine_export_formats(
-        export_format,
-        annotate, 
-        subtitle
-        )
     
-    # Check if language for translation is valid
-    if translate:
-        if not core_utils.VALID_ISO_CODES.get(translate):
-            print(f'[bold]→ Please provide a valid language for translation: ')
-            print(f'{', '.join(core_utils.VALID_ISO_CODES.keys())}')
+    # Load and validate .env params
+    if core_utils.validate_dotenv_config():
+        # Get params
+        provider = os.getenv('LLM_PROVIDER')
+        api_key = os.getenv(f'{provider.upper()}_API_KEY')
+        model = os.getenv(f'LLM_MODEL_{provider.upper()}')
+
+        # Determine the ExportFormats
+        export_formats = output_utils.determine_export_formats(
+            export_format,
+            annotate, 
+            subtitle
+            )
+        
+        # Check if language for translation is valid
+        if translate:
+            if not core_utils.VALID_ISO_CODES.get(translate):
+                print(f'[bold]→ Please provide a valid language for translation: ')
+                print(f"{', '.join(core_utils.VALID_ISO_CODES.keys())}")
+                raise typer.Exit()
+        
+        # Instantiate LLM transcription service
+        try:
+            service = LLMService(
+                base_dir=output_dir,
+                provider=core_utils.LLMProviders(provider),
+                model=model,
+                api_key=api_key,
+                file_language=lang,
+                annotate=annotate,
+                translate=translate,
+                subtitle=subtitle,
+                verbose=verbose,
+                export_formats=export_formats
+            )
+        except Exception as e:
+            print(f"→ Error initializing LLM transcription service: {e}")
             raise typer.Exit()
-    
-    # Instantiate LLM transcription service
-    try:
-        service = LLMService(
-            base_dir=output_dir,
-            provider=core_utils.LLMProviders(provider),
-            model=model,
-            api_key=api_key,
-            file_language=lang,
-            annotate=annotate,
-            translate=translate,
-            subtitle=subtitle,
-            verbose=verbose,
-            export_formats=export_formats
-        )
-    except Exception as e:
-        print(f"→ Error initializing LLM transcription service: {e}")
-        raise typer.Exit()
-    
-    # Process files
-    # try:
-    service.process_files(files)
-    # except FileNotFoundError:
-    #     print(f"→ Error: One or more input files/paths not found: {files}")
-    #     raise typer.Exit()
-    # except Exception as e:
-    #     print(f"→ An error occurred during file processing: {e}")
-    #     raise typer.Exit()
+        
+        # Process files
+        # try:
+        service.process_files(files)
+        # except FileNotFoundError:
+        #     print(f"→ Error: One or more input files/paths not found: {files}")
+        #     raise typer.Exit()
+        # except Exception as e:
+        #     print(f"→ An error occurred during file processing: {e}")
+        #     raise typer.Exit()
+    else:
+        print("[blue1]→ LLM service not configured. Use 'whisply llm config'")
+        raise typer.Exit(code=1)
 
 def main():
     cli_app()
