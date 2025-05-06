@@ -1,12 +1,15 @@
+######
+# Code lifted from:
+# https://github.com/huggingface/speechbox/blob/main/src/speechbox/diarize.py
+# https://github.com/m-bain/whisperX/blob/main/whisperx/diarize.py
+###
+
 import requests
 import torch
 import numpy as np
 from torchaudio import functional as F
 from pyannote.audio import Pipeline
 from transformers.pipelines.audio_utils import ffmpeg_read
-
-# Code lifted from https://github.com/huggingface/speechbox/blob/main/src/speechbox/diarize.py
-# and from https://github.com/m-bain/whisperX/blob/main/whisperx/diarize.py
 
 def preprocess_inputs(inputs):
     if isinstance(inputs, str):
@@ -116,7 +119,6 @@ def diarize_audio(
 
     return new_segments
 
-
 def post_process_segments_and_transcripts(
         new_segments, 
         transcript, 
@@ -128,18 +130,24 @@ def post_process_segments_and_transcripts(
 
     # Iterate through each diarization segment and assign transcript chunks 
     # whose end timestamp falls within the segment
-    for segment in new_segments:
+    for segment in new_segments:       
         seg_start = segment["segment"]["start"]
         seg_end = segment["segment"]["end"]
         segment_chunks = []
 
         # Collect transcript chunks until the chunk's end timestamp exceeds 
         # the diarization segment's end
-        while (transcript_idx < num_chunks 
-               and 
-               transcript[transcript_idx]["timestamp"][1] <= seg_end):
-            segment_chunks.append(transcript[transcript_idx])
-            transcript_idx += 1
+        while transcript_idx < num_chunks:
+            _, end = transcript[transcript_idx]["timestamp"]
+            if end is None:
+                # Skip chunks with missing end timestamp
+                transcript_idx += 1
+                continue
+            if end <= seg_end:
+                segment_chunks.append(transcript[transcript_idx])
+                transcript_idx += 1
+            else:
+                break
 
         # If no transcript chunks were found for this segment, continue 
         # to next segment
