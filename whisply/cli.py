@@ -18,7 +18,7 @@ OpenAI's Whisper and multimodal LLMs on Win, Linux and Mac.",
     no_args_is_help=True
 )
 
-# Shared parameters for transcription services
+# Shared params for transcription services
 def shared_params():
     return dict(
         files=typer.Option(
@@ -131,6 +131,8 @@ def app():
     """
     try:
         from whisply.app import main
+        print(f"[blue3]→ App startup")
+        print(f"[blue3]→ Open the [bold]local URL[/] in your browser:")
         main.start_app()
         print(f"[blue3]→ App closed.")
     except ImportError:
@@ -283,6 +285,13 @@ def config(
     """
     Configure your LLM provider, model and api-key. 
     """
+    try:
+        from whisply.core import LLMService
+    except ImportError:
+        print('[dark_magenta]→ Please install necessary dependencies before \
+running LLM transcription with: [bold]pip install "whisply\\[llm]"[/bold]')
+        raise typer.Exit(code=1)
+
     # Load and update .env params
     config_changed = core_utils.update_dotenv_configuration(
         provider=provider,
@@ -293,26 +302,25 @@ def config(
 
     # List available models for the active provider
     if list_models:
-        from whisply.core import LLMService
-
-        # Determine provider to list models for (argument > active .env)
-        provider_for_list = provider.value if provider else os.getenv('LLM_PROVIDER')
-
-        if not provider_for_list:
-            print("→ No active LLM provider set.")
-            print("→ Set one using: [bold]whisply llm config <provider_name>[/bold]")
-            raise typer.Exit()
-
-        # Get the API key for this specific provider
-        api_key_env_name = f"{provider_for_list.upper()}_API_KEY"
-        provider_api_key = os.getenv(api_key_env_name)
-
-        if not provider_api_key:
-             print(f"→ API key ({api_key_env_name}) not found in .env for provider '{provider_for_list}'.")
-             print(f"→ Set it using: 'whisply llm config {provider_for_list} --api_key YOUR_KEY'")
-             raise typer.Exit(code=1)
-
         try:
+            # Determine provider to list models for (argument > active .env)
+            provider_for_list = provider.value if provider else os.getenv('LLM_PROVIDER')
+
+            if not provider_for_list:
+                print("→ No active LLM provider set.")
+                print("→ Set one using: [bold]whisply llm config <provider_name>[/bold]")
+                raise typer.Exit()
+
+            # Get the API key for this specific provider
+            api_key_env_name = f"{provider_for_list.upper()}_API_KEY"
+            provider_api_key = os.getenv(api_key_env_name)
+
+            if not provider_api_key:
+                print(f"→ API key ({api_key_env_name}) not found in .env for provider '{provider_for_list}'.")
+                print(f"→ Set it using: 'whisply llm config {provider_for_list} --api_key YOUR_KEY'")
+                raise typer.Exit(code=1)
+
+            # LLMService
             service = LLMService(
                 provider=core_utils.LLMProviders(provider_for_list),
                 api_key=provider_api_key,
@@ -344,14 +352,25 @@ def run(
     lang: Optional[str] = shared_params()["lang"],
     annotate: Optional[bool] = shared_params()["annotate"],
     subtitle: Optional[bool] = shared_params()["subtitle"],
-    translate: Optional[bool] = shared_params()["translate"],
+    translate: Optional[str] = typer.Option(
+        None,
+        "--translate",
+        "-t",
+        help="Translate to language (fr, de, es ...)."
+        ),
+    # translate: Optional[bool] = shared_params()["translate"],
     export_format: output_utils.ExportFormats = shared_params()["export_format"],
     verbose: Optional[bool] = shared_params()["verbose"]
     ):
     """
     Transcribe files using LLM providers.
     """
-    from whisply.core import LLMService
+    try:
+        from whisply.core import LLMService
+    except ImportError:
+        print('[dark_magenta]→ Please install necessary dependencies before \
+running LLM transcription with: [bold]pip install "whisply\\[llm]"[/bold]')
+        raise typer.Exit(code=1)
 
     # Load env
     dotenv_path = core_utils.set_and_validate_dotenv()
@@ -374,6 +393,13 @@ def run(
         subtitle
         )
     
+    # Check if language for translation is valid
+    if translate:
+        if not core_utils.VALID_ISO_CODES.get(translate):
+            print(f'[bold]→ Please provide a valid language for translation: ')
+            print(f'{', '.join(core_utils.VALID_ISO_CODES.keys())}')
+            raise typer.Exit()
+    
     # Instantiate LLM transcription service
     try:
         service = LLMService(
@@ -393,14 +419,14 @@ def run(
         raise typer.Exit()
     
     # Process files
-    try:
-        service.process_files(files)
-    except FileNotFoundError:
-        print(f"→ Error: One or more input files/paths not found: {files}")
-        raise typer.Exit()
-    except Exception as e:
-        print(f"→ An error occurred during file processing: {e}")
-        raise typer.Exit()
+    # try:
+    service.process_files(files)
+    # except FileNotFoundError:
+    #     print(f"→ Error: One or more input files/paths not found: {files}")
+    #     raise typer.Exit()
+    # except Exception as e:
+    #     print(f"→ An error occurred during file processing: {e}")
+    #     raise typer.Exit()
 
 def main():
     cli_app()

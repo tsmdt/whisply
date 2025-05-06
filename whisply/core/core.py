@@ -23,7 +23,7 @@ class BaseService(abc.ABC):
     annotate: bool = False
     subtitle: bool = False
     sub_length: Optional[int] = None
-    translate: bool = False
+    # translate: bool = False
     verbose: bool = False
     corrections: Optional[Corrections] = None
     export_formats: Any = output_utils.ExportFormats.TXT

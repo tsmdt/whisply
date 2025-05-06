@@ -28,6 +28,7 @@ class LocalService(BaseService):
     needs.
     """
     device: str = 'cpu'
+    translate: bool = False
     num_speakers: Optional[int] = None
     hf_token: Optional[str] = None
     del_originals: bool = False

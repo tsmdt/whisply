@@ -461,7 +461,7 @@ def update_dotenv_configuration(
 
         if not active_provider:
             print("→ No active LLM provider set.")
-            print("→ Set one using: [bold]whisply llm config <provider_name>[/bold]")
+            print("→ Use: [bold]whisply llm config <provider_name>[/bold]")
             raise typer.Exit()
 
         # Construct provider-specific keys
@@ -490,7 +490,7 @@ def update_dotenv_configuration(
         if not provider_to_configure:
             print("→ Please specify a provider when setting a model or API key.")
             raise typer.Exit(code=1)
-        print(f"→ Configuring settings for the active provider: '{provider_to_configure}'")
+        print(f"[blue1 bold]→ Config for active provider: '{provider_to_configure}'")
 
     # Set Config
     config_changed = False
@@ -509,7 +509,7 @@ def update_dotenv_configuration(
             raise typer.Exit(code=1)
         key_name_model = f"LLM_MODEL_{provider_to_configure.upper()}"
         set_key(dotenv_path, key_name_model, model)
-        print(f"→ Set model for {provider_to_configure}: {key_name_model}={model}")
+        print(f"[blue1]→ Set model for {provider_to_configure}: [bold]{key_name_model}={model}")
         config_changed = True
 
     # 3. Set API key for the active provider
@@ -519,7 +519,8 @@ def update_dotenv_configuration(
             raise typer.Exit(code=1)
         key_name_api_key = f"{provider_to_configure.upper()}_API_KEY"
         set_key(dotenv_path, key_name_api_key, api_key)
-        print(f"→ Set API key for {provider_to_configure}: {key_name_api_key}=[bold]{api_key[:3]}...{api_key[-3:]}[/]") # Masked confirmation
+        print(f"[blue1]→ Set API key for {provider_to_configure}: \
+{key_name_api_key}=[bold]{api_key[:3]}...{api_key[-3:]}[/]") # Masked api_key
         config_changed = True
 
     return config_changed

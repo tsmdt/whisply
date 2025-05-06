@@ -22,6 +22,7 @@ class LLMService(BaseService):
     """
     provider: core_utils.LLMProviders
     api_key: Optional[str]
+    translate: Optional[str] = None
     temperature: float = 0.3
     client: Any = field(init=False, default=None)
     _api_key_internal: Optional[str] = field(init=False, default=None, repr=False)
@@ -73,12 +74,34 @@ class LLMService(BaseService):
             if potential_code in core_utils.VALID_ISO_CODES:
                 self.file_language = potential_code
 
-    def llm_response_to_transcription_dict(
+    def llm_response_to_dict(
             self,
             llm_response: str
         ) -> dict:
         """
-        Convert a LLM transcription into a whisply transcription dict.
+        Convert a LLM transcription into a plain whisply transcription dict.
+        """
+        textlines = llm_response.split('\n')
+        full_transcript = ' '.join(textlines)
+
+        # Build transcription dict
+        result_dict = {
+            'transcriptions': {
+                self.file_language: {
+                    'text': full_transcript
+                }
+            }
+        }
+        return result_dict
+
+    def llm_response_to_annotated_dict(
+            self,
+            llm_response: str
+        ) -> dict:
+        """
+        Convert a LLM transcription into a whisply transcription dict with
+        annotated speaker labels and timestamps of this pattern:
+        [MM:SS:MS - MM:SS:MS] [Speaker Label] Transcript Segment
         """
         # Split response into textlines
         textlines = llm_response.split('\n')
@@ -87,7 +110,7 @@ class LLMService(BaseService):
         annotation_text = ""
 
         # Pattern: [MM:SS:MS - MM:SS:MS] [Speaker Label] Transcript Segment
-        mm_ss_ms = re.compile(r'\[(\d{2}:\d{2}:\d{1,3})\s*-\s*(\d{2}:\d{2}:\d{1,3})\]\s*\[(.*?)\]\s*(.*)')
+        mm_ss_ms = re.compile(r'\[(\d{1,2}:\d{2}:\d{1,3})\s*-\s*(\d{1,2}:\d{2}:\d{1,3})\]\s*\[(.*?)\]\s*(.*)')
         current_hour = 0
         previous_start_minute = -1
 
@@ -189,9 +212,11 @@ class LLMService(BaseService):
             myfile, 
             prompt: str, 
             description: str,
-            return_dict: bool = False):
+            return_dict: bool = False
+        ):
         """
-        TODO
+        Call google-genai client (wrapped in GoogleClient class) to generate
+        a LLM response.
         """
         result = core_utils.run_with_progress(
             description=description,
@@ -207,10 +232,16 @@ class LLMService(BaseService):
         result = result.text
 
         if return_dict:
-            # Convert to transcription dict
-            result_dict = self.llm_response_to_transcription_dict(
-                llm_response=result
-            )
+            if self.annotate or self.subtitle:
+                # Convert to _annotated_ transcription dict
+                result_dict = self.llm_response_to_annotated_dict(
+                    llm_response=result
+                )
+            else:
+                # Convert to _plain_ transcription dict
+                result_dict = self.llm_response_to_dict(
+                    llm_response=result
+                )
             return result_dict
         else:
             return result
@@ -263,12 +294,54 @@ class LLMService(BaseService):
                         logging.info(f'Detected language "{self.file_language}"')
 
                     # Transcription
-                    result_data = self.call_google_client(
-                            myfile,
-                            prompt=prompts.TRANSCRIBE_ANNOTATE,
-                            description=f"[purple]→ Transcribing + Annotating [bold]{filepath.name}[/] with [bold]{self.model}",
-                            return_dict=True
-                        )
+                    if self.annotate or self.subtitle:
+                        # Annotate speakers and timestamps
+                        result_data = self.call_google_client(
+                                myfile,
+                                prompt=prompts.TRANSCRIBE_ANNOTATE,
+                                description=f"[purple]→ Transcribing + Annotating [bold]{filepath.name}[/] with [bold]{self.model}",
+                                return_dict=True
+                            )
+                        
+                        # Translation
+                        if self.translate:
+                            # Set file language to translation target language
+                            self.file_language = self.translate
+                            translation_data = self.call_google_client(
+                                myfile,
+                                prompt=prompts.TRANSCRIBE_ANNOTATE_TRANSLATE.replace(
+                                    '{language}', 
+                                    core_utils.VALID_ISO_CODES.get(self.translate)
+                                ),
+                                description=f"[dark_blue]→ Translating [bold]{filepath.name}[/] to {self.file_language} with [bold]{self.model}",
+                                return_dict=True
+                            )
+                            # Append translation to result_data
+                            result_data['transcriptions'][self.file_language] = translation_data['transcriptions'][self.file_language]
+                    else:
+                        # Plain transcription
+                        result_data = self.call_google_client(
+                                myfile,
+                                prompt=prompts.TRANSCRIBE,
+                                description=f"[cyan]→ Transcribing [bold]{filepath.name}[/] with [bold]{self.model}",
+                                return_dict=True
+                            )
+                        
+                        # Translation
+                        if self.translate:
+                             # Set file language to translation target language
+                            self.file_language = self.translate
+                            translation_data = self.call_google_client(
+                                myfile,
+                                prompt=prompts.TRANSCRIBE_TRANSLATE.replace(
+                                    '{language}',
+                                    core_utils.VALID_ISO_CODES.get(self.translate)
+                                ),
+                                description=f"[dark_blue]→ Translating [bold]{filepath.name}[/] to {self.file_language} with [bold]{self.model}",
+                                return_dict=True
+                            )
+                            # Append translation to result_data
+                            result_data['transcriptions'][self.file_language] = translation_data['transcriptions'][self.file_language]
 
                     # Build results
                     result = {
