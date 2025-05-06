@@ -1,6 +1,5 @@
 import re
 import os
-import json
 import logging
 import ffmpeg
 import typer
@@ -215,7 +214,8 @@ class DeviceChoice(str, Enum):
 
 class LLMProviders(str, Enum):
     GOOGLE = 'google'
-    # OPENAI = 'openai'
+    OPENAI = 'openai'
+    ELEVENLABS = 'elevenlabs'
 
 
 class FilePathProcessor:
@@ -469,7 +469,7 @@ def update_dotenv_config(
     Returns True if config was changed; False if it was not.
     """
     # Create config .env if it doesn't exist and load it
-    dotenv_path = core_utils.set_and_validate_dotenv()
+    dotenv_path = set_and_validate_dotenv()
 
     # Load .env params
     load_dotenv(dotenv_path=dotenv_path, override=True)
