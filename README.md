@@ -136,28 +136,35 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 
 ### Nvidia GPU fix for Linux users (March 2025)
 <details>
-<summary><i>Could not load library libcudnn_ops_infer.so.8.</i> (<b>click to expand</b>)</summary>
+<summary><i>Could not load library libcudnn_ops.so.9</i> (<b>click to expand</b>)</summary>
 <br>If you use <b>whisply</b> on a Linux system with a Nvidia GPU and encounter this error:<br><br>
 
 ```shell
-"Could not load library libcudnn_ops_infer.so.8. Error: libcudnn_ops_infer.so.8: cannot open shared object file: No such file or directory"
+Unable to load any of {libcudnn_ops.so.9.1.0, libcudnn_ops.so.9.1, libcudnn_ops.so.9, libcudnn_ops.so}
 ```
 
 <b>Use the following steps to fix the issue</b>:
 
-1. In your activated python environment run `pip list` and check that `torch==2.4.0` and `torchaudio==2.4.0` are installed.
-2. If yes, run `pip install ctranslate2==4.5.0`. Otherwise install `torch==2.4.0` and `torchaudio==2.4.0` using pip first.
+1. In your activated python environment run `pip list` and check that `torch==2.7.0` and `torchaudio==2.7.0` are installed.
+2. If yes, run `pip install ctranslate2==4.5.0`.
 3. Export the following environment variable to your shell:
 
 ```shell
-export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'`
+export LD_LIBRARY_PATH="$(python - <<'PY'
+import importlib.util, pathlib, sys
+spec = importlib.util.find_spec('nvidia.cudnn')
+print(pathlib.Path(spec.origin).parent / 'lib')
+PY
+):${LD_LIBRARY_PATH}"
 ```
 
-4. Add this line to your Python environment to make it permanent:
+4. To make the change permanent, run this bash command while your python environment is activated:
 
 ```shell
-echo "export LD_LIBRARY_PATH=\`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + \":\" + os.path.dirname(nvidia.cudnn.lib.__file__))'\`" >> path/to/your/python/env/bin/activate
+printf '\n# --- add cuDNN wheel dir ---\nexport LD_LIBRARY_PATH="$(python - <<'"'"'PY'"'"'\nimport importlib.util, pathlib, sys\nprint(pathlib.Path(importlib.util.find_spec("nvidia.cudnn").origin).parent / "lib")\nPY\n):${LD_LIBRARY_PATH}"\n' >> "$VIRTUAL_ENV/bin/activate"
 ```
+
+Finally, deactivate the environment and reactivate it to apply the changes.
 
 Find additional information at <a href="https://github.com/SYSTRAN/faster-whisper" target="_blank">faster-whisper</a>'s GitHub page.
 </details>

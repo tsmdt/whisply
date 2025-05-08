@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from functools import partial
 from rich import print
+import whisperx.diarize
 
 from whisply import little_helper, output_utils, models
 from whisply.little_helper import FilePathProcessor
@@ -449,7 +450,7 @@ class TranscriptionHandler:
             # Set parameters
             device = 'cuda' if self.device == 'cuda:0' else 'cpu'
             
-            diarize_model = whisperx.DiarizationPipeline(
+            diarize_model = whisperx.diarize.DiarizationPipeline(
                 use_auth_token=self.hf_token, 
                 device=device
                 )
