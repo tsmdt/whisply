@@ -8,7 +8,7 @@ setup(
     author="Thomas Schmidt, Renat Shigapov",
     version='0.10.4',
     packages=find_packages(),
-    license="Apache-2.0",
+    license="MIT",
     description="Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -31,7 +31,7 @@ setup(
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: MIT Software License",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.10',

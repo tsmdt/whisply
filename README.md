@@ -134,10 +134,10 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
   pip install .
   ```
 
-### Nvidia GPU fix for Linux users (March 2025)
+### Nvidia GPU fix (May 2025)
 <details>
 <summary><i>Could not load library libcudnn_ops.so.9</i> (<b>click to expand</b>)</summary>
-<br>If you use <b>whisply</b> on a Linux system with a Nvidia GPU and encounter this error:<br><br>
+<br>If you use <b>whisply</b> with a Nvidia GPU and encounter this error:<br><br>
 
 ```shell
 Unable to load any of {libcudnn_ops.so.9.1.0, libcudnn_ops.so.9.1, libcudnn_ops.so.9, libcudnn_ops.so}
