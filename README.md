@@ -26,6 +26,7 @@
   - [Post correction](#post-correction)
   - [Batch processing](#batch-processing)
     - [Using config files for batch processing](#using-config-files-for-batch-processing)
+- [Citation](#citation)
 
 ## Features
 
@@ -306,5 +307,17 @@ You can provide a `.json` config file by using the `--config` option which makes
     "verbose": false                           # Print transcription segments while processing 
     "del_originals": false,                    # Delete original input files after file conversion
     "post_correction": "my_corrections.yaml"   # Apply post correction with specified patterns in .yaml
+}
+```
+
+## Citation
+
+```bibtex
+@software{whisply,
+  author       = {Thomas Schmidt, Renat Shigapov},
+  title        = {Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!},
+  year         = {2025},
+  url          = {https://github.com/tsmdt/whisply},
+  note         = {Accessed: 2025-05-29}
 }
 ```
