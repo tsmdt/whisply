@@ -1,6 +1,6 @@
 # whisply
 
-[![PyPI version](https://badge.fury.io/py/whisply.svg)](https://badge.fury.io/py/whisply)
+[![PyPI version](https://badge.fury.io/py/kb-mlx.svg)](https://badge.fury.io/py/kb-mlx)
 
 <img src="assets/whisply.png" width="25%">
 
