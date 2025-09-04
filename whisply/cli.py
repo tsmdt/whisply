@@ -12,10 +12,20 @@ from whisply.little_helper import DeviceChoice
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-cli_app = typer.Typer()
+cli_app = typer.Typer(no_args_is_help=True)
 
-@cli_app.command(no_args_is_help=True)
-def main(
+@cli_app.command("list")
+def list_cmd():
+    """
+    List available models
+    """
+    from whisply import models
+    available_models = "Available models:\n... "
+    available_models += '\n... '.join(models.WHISPER_MODELS.keys())
+    print(f"{available_models}")
+
+@cli_app.command("run", no_args_is_help=True)
+def run_cmd(
     files: Optional[List[str]] = typer.Option(
         None,
         "--files",
@@ -43,7 +53,7 @@ def main(
         "large-v3-turbo",
         "--model",
         "-m",
-        help='Whisper model to use (List models via --list_models).',
+        help='Whisper model to use (run "whisply list" to see options).',
     ),
     lang: Optional[str] = typer.Option(
         None,
@@ -115,28 +125,11 @@ def main(
         "-post",
         help="Path to YAML file for post-correction.",
     ),
-    launch_app: bool = typer.Option(
-        False,
-        "--launch_app",
-        "-app",
-        help="Launch the web app instead of running standard CLI commands.",
-    ),
-    list_models: bool = typer.Option(
-        False,
-        "--list_models",
-        help="List available models.",
-    )
 ):
     """
-    WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
+    💬 Transcribe files with whisply
     """
-    from whisply import little_helper, transcription, models
-    
-    # Start the gradio web app
-    if launch_app:
-        from whisply.app import main as run_gradio_app
-        run_gradio_app()
-        raise typer.Exit()
+    from whisply import little_helper, models
 
     # Load configuration from config.json if provided
     if config:
@@ -156,13 +149,6 @@ def main(
         del_originals = config_data.get("del_originals", del_originals)
         post_correction = config_data.get("post_correction", post_correction)
 
-    # Print available models
-    if list_models:
-        available_models = "Available models:\n... "
-        available_models += '\n... '.join(models.WHISPER_MODELS.keys())
-        print(f"{available_models}")
-        raise typer.Exit()
-
     # Check if provided model is available
     if not models.ensure_model(model):
         msg = f"""→ Model "{model}" is not available.\n→ Available models:\n... """
@@ -179,36 +165,52 @@ def main(
 
     # Determine the computation device
     device_str = little_helper.get_device(device=device)
-    
+
     # Determine the ExportFormats
     export_formats = output_utils.determine_export_formats(
-        export_format, 
-        annotate, subtitle
-        )
-    
+        export_format,
+        annotate,
+        subtitle
+    )
+
     # Load corrections if post_correction is provided
     if post_correction:
         corrections = post.load_correction_list(post_correction)
-    
-    # Instantiate TranscriptionHandler
-    service = transcription.TranscriptionHandler(
-        base_dir=output_dir,
-        device=device_str,
-        model=model,
-        file_language=lang, 
-        annotate=annotate, 
-        num_speakers=num_speakers,
-        translate=translate,
-        hf_token=hf_token, 
-        subtitle=subtitle,
-        sub_length=sub_length,
-        verbose=verbose,
-        del_originals=del_originals,
-        corrections=corrections if post_correction else None,
-        export_formats=export_formats
-    )
-    # Process files
-    service.process_files(files)
+
+    # Transcription
+    if files:
+        from whisply.transcription import TranscriptionHandler
+
+        # Instantiate TranscriptionHandler
+        service = TranscriptionHandler(
+            base_dir=output_dir,
+            device=device_str,
+            model=model,
+            file_language=lang,
+            annotate=annotate,
+            num_speakers=num_speakers,
+            translate=translate,
+            hf_token=hf_token,
+            subtitle=subtitle,
+            sub_length=sub_length,
+            verbose=verbose,
+            del_originals=del_originals,
+            corrections=corrections if post_correction else None,
+            export_formats=export_formats
+        )
+        # Process files
+        service.process_files(files)
+    else:
+        print("[bold]→ Please provide a Path to a file, folder, URL or .list to start the transcription.")
+        raise typer.Exit()
+
+@cli_app.command("app")
+def app_cmd():
+    """
+    Launch the Gradio web app
+    """
+    from whisply.app import main as run_gradio_app
+    run_gradio_app()
 
 def run():
     cli_app()
