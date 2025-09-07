@@ -274,11 +274,14 @@ def create_gradio_interface():
 
     # Build the Gradio Blocks interface
     with gr.Blocks(theme=theme, css=CSS) as app:
-        gr.Markdown("# whisply 💬")
-        gr.Markdown("""
-        Transcribe, translate, annotate, and subtitle audio and video files with \
-        OpenAI's Whisper ... fast!
-        """)
+        gr.Markdown("# whisply 💬", elem_id="app-title")
+        gr.Markdown(
+            """
+            Transcribe, translate, annotate, and subtitle audio and video files with \
+            OpenAI's Whisper ... fast!
+            """,
+            elem_id="app-subtitle"
+        )
 
         # File Upload and Model Selection
         with gr.Row():

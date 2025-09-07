@@ -14,16 +14,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 cli_app = typer.Typer(no_args_is_help=True)
 
-@cli_app.command("list")
-def list_cmd():
-    """
-    List available models
-    """
-    from whisply import models
-    available_models = "Available models:\n... "
-    available_models += '\n... '.join(models.WHISPER_MODELS.keys())
-    print(f"{available_models}")
-
 @cli_app.command("run", no_args_is_help=True)
 def run_cmd(
     files: Optional[List[str]] = typer.Option(
@@ -207,10 +197,21 @@ def run_cmd(
 @cli_app.command("app")
 def app_cmd():
     """
-    Launch the Gradio web app
+    🦜 Launch the whisply app
     """
     from whisply.app import main as run_gradio_app
     run_gradio_app()
+
+@cli_app.command("list")
+def list_cmd():
+    """
+    ⚙️ List available models (Note: some models might not be available for
+    certain tasks like annotation or subtitling)
+    """
+    from whisply import models
+    available_models = "[bold]Available models:\n... "
+    available_models += '\n... '.join(models.WHISPER_MODELS.keys())
+    print(f"{available_models}")
 
 def run():
     cli_app()

@@ -7,6 +7,14 @@ CSS = """
     .svelte-1ed2p3z { 
         text-align: center; 
     }
+
+    #app-title {
+        text-align: center;
+    }
+
+    #app-subtitle {
+        text-align: center;
+    }
     """
 
 LANGUAGES = {
