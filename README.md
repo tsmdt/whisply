@@ -135,7 +135,7 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
   pip install .
   ```
 
-### Nvidia GPU fix (May 2025)
+### Nvidia GPU fix (September 2025)
 <details>
 <summary><i>Could not load library libcudnn_ops.so.9</i> (<b>click to expand</b>)</summary>
 <br>If you use <b>whisply</b> with a Nvidia GPU and encounter this error:<br><br>
@@ -147,7 +147,7 @@ Unable to load any of {libcudnn_ops.so.9.1.0, libcudnn_ops.so.9.1, libcudnn_ops.
 <b>Use the following steps to fix the issue</b>:
 
 1. In your activated python environment run `pip list` and check that `torch==2.7.0` and `torchaudio==2.7.0` are installed.
-2. If yes, run `pip install ctranslate2==4.5.0`.
+2. If yes, run `pip install ctranslate2==4.6.0`.
 3. Export the following environment variable to your shell:
 
 ```shell
@@ -174,37 +174,38 @@ Find additional information at <a href="https://github.com/SYSTRAN/faster-whispe
 
 ### CLI
 
+Three CLI commands are available:
+
+1. `whisply run`: Running a transcription task
+2. `whisply app`: Starting the whisply browser app
+3. `whisply list`: Listing available models
+
 ```shell
-$ whisply
+$ whisply run                                                                    
 
- Usage: whisply [OPTIONS]
+ Usage: whisply run [OPTIONS]
 
- WHISPLY 💬 Transcribe, translate, annotate and subtitle audio and video files with OpenAI's Whisper ... fast!
+ 💬 Transcribe files with whisply
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --files               -f         TEXT                                     Path to file, folder, URL or .list to process. [default: None]                   │
-│ --output_dir          -o         DIRECTORY                                Folder where transcripts should be saved. [default: transcriptions]              │
-│ --device              -d         [auto|cpu|gpu|mps]                       Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4).            │
-│                                                                           [default: auto]                                                                  │
-│ --model               -m         TEXT                                     Whisper model to use (List models via --list_models). [default: large-v3-turbo]  │
-│ --lang                -l         TEXT                                     Language of provided file(s) ("en", "de") (Default: auto-detection).             │
-│                                                                           [default: None]                                                                  │
-│ --annotate            -a                                                  Enable speaker annotation (Saves .rttm | Default: False).                        │
-│ --num_speakers        -num       INTEGER                                  Number of speakers to annotate (Default: auto-detection). [default: None]        │
-│ --hf_token            -hf        TEXT                                     HuggingFace Access token required for speaker annotation. [default: None]        │
-│ --subtitle            -s                                                  Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                │
-│ --sub_length                     INTEGER                                  Subtitle segment length in words. [default: 5]                                   │
-│ --translate           -t                                                  Translate transcription to English (Default: False).                             │
-│ --export              -e         [all|json|txt|rttm|vtt|webvtt|srt|html]  Choose the export format. [default: all]                                         │
-│ --verbose             -v                                                  Print text chunks during transcription (Default: False).                         │
-│ --del_originals       -del                                                Delete original input files after file conversion. (Default: False)              │
-│ --config                         PATH                                     Path to configuration file. [default: None]                                      │
-│ --post_correction     -post      PATH                                     Path to YAML file for post-correction. [default: None]                           │
-│ --launch_app          -app                                                Launch the web app instead of running standard CLI commands.                     │
-│ --list_models                                                             List available models.                                                           │
-│ --install-completion                                                      Install completion for the current shell.                                        │
-│ --show-completion                                                         Show completion for the current shell, to copy it or customize the installation. │
-│ --help                                                                    Show this message and exit.                                                      │
+│ --files            -f         TEXT                                     Path to file, folder, URL or .list to process.                                      │
+│ --output_dir       -o         DIRECTORY                                Folder where transcripts should be saved. [default: transcriptions]                 │
+│ --device           -d         [auto|cpu|gpu|mps]                       Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4).               │
+│                                                                        [default: auto]                                                                     │
+│ --model            -m         TEXT                                     Whisper model to use (run "whisply list" to see options). [default: large-v3-turbo] │
+│ --lang             -l         TEXT                                     Language of provided file(s) ("en", "de") (Default: auto-detection).                │
+│ --annotate         -a                                                  Enable speaker annotation (Saves .rttm | Default: False).                           │
+│ --num_speakers     -num       INTEGER                                  Number of speakers to annotate (Default: auto-detection).                           │
+│ --hf_token         -hf        TEXT                                     HuggingFace Access token required for speaker annotation.                           │
+│ --subtitle         -s                                                  Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                   │
+│ --sub_length                  INTEGER                                  Subtitle segment length in words. [default: 5]                                      │
+│ --translate        -t                                                  Translate transcription to English (Default: False).                                │
+│ --export           -e         [all|json|txt|rttm|vtt|webvtt|srt|html]  Choose the export format. [default: all]                                            │
+│ --verbose          -v                                                  Print text chunks during transcription (Default: False).                            │
+│ --del_originals    -del                                                Delete original input files after file conversion. (Default: False)                 │
+│ --config                      PATH                                     Path to configuration file.                                                         │
+│ --post_correction  -post      PATH                                     Path to YAML file for post-correction.                                              │
+│ --help                                                                 Show this message and exit.                                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -213,13 +214,7 @@ $ whisply
 Instead of running `whisply` from the CLI you can start the web app instead:
 
 ```shell
-$ whisply --launch_app
-```
-
-or:
-
-```shell
-$ whisply -app
+$ whisply app
 ```
 
 Open the local URL in your browser after starting the app (**Note**: The URL might differ from system to system):
