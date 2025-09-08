@@ -1,0 +1,29 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: whisply
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - family-names: Schmidt
+    given-names: Thomas
+    email: thomas.schmidt@uni-mannheim.de
+    affiliation: 'University of Mannheim, University Library'
+    orcid: 'https://orcid.org/0000-0003-3620-3355'
+  - given-names: Renat
+    family-names: Shigapov
+    email: renat.shigapov@uni-mannheim.de
+    affiliation: 'University of Mannheim, University Library'
+    orcid: 'https://orcid.org/0000-0002-0331-2558'
+repository-code: 'https://github.com/tsmdt/whisply'
+keywords:
+  - whisper
+  - asr
+  - automatic-speech-recognition
+  - speech-recognition
+  - speech-to-text
+  - audio-transcription
+license: MIT
