@@ -16,7 +16,7 @@
   - [Install `ffmpeg`](#install-ffmpeg)
   - [Installation with `pip`](#installation-with-pip)
   - [Installation from `source`](#installation-from-source)
-  - [Nvidia GPU fix for Linux users (March 2025)](#nvidia-gpu-fix-for-linux-users-march-2025)
+  - [Nvidia GPU fix for Linux users (September 2025)](#nvidia-gpu-fix-september-2025)
 - [Usage](#usage)
   - [CLI](#cli)
   - [App](#app)
