@@ -58,6 +58,10 @@ def create_gradio_interface():
         translate = 'Translate to English' in options
         subtitle = 'Generate Subtitles' in options
 
+        # Ensure hf_token is None if empty string
+        if not hf_token:
+            hf_token = None
+
         if (annotate or subtitle) and not hf_token:
             hf_token = os.getenv('HF_TOKEN')
             if not hf_token:
