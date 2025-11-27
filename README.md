@@ -51,7 +51,7 @@
 ## Requirements
 
 * [FFmpeg](https://ffmpeg.org/)
-* \>= Python3.10
+* \>= Python3.11
 * GPU  processing requires:
   * Nvidia GPU (CUDA: cuBLAS and cuDNN for CUDA 12)
   * Apple Metal Performance Shaders (MPS) (Mac M1-M4)
