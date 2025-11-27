@@ -4,6 +4,7 @@
 /files*
 /legacy
 /venv*
+/tests*
 .vscode
 .DS_Store
 *.log
