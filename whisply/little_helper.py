@@ -10,7 +10,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Any, List
 from rich import print
-from rich.progress import Progress, TimeElapsedColumn, TextColumn, SpinnerColumn
+from rich.progress import (
+    Progress,
+    TimeElapsedColumn,
+    TextColumn,
+    SpinnerColumn
+)
+
 from whisply import download_utils
 
 # Set logging configuration
@@ -23,15 +29,15 @@ class DeviceChoice(str, Enum):
     CPU = 'cpu'
     GPU = 'gpu'
     MPS = 'mps'
-    
-    
+
+
 def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
     """
-    Determine the computation device based on user preference and 
+    Determine the computation device based on user preference and
     availability.
     """
     import torch
-    
+
     if device == DeviceChoice.AUTO:
         if torch.cuda.is_available():
             device = 'cuda:0'
@@ -43,13 +49,13 @@ def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
         if torch.cuda.is_available():
             device = 'cuda:0'
         else:
-            print(f"[blue1]→ NVIDIA GPU not available. Using CPU.")
+            print("[blue1]→ NVIDIA GPU not available. Using CPU.")
             device = 'cpu'
     elif device == DeviceChoice.MPS:
         if torch.backends.mps.is_available():
             device = 'mps'
         else:
-            print(f"[blue1]→ MPS not available. Using CPU.")
+            print("[blue1]→ MPS not available. Using CPU.")
             device = 'cpu'
     elif device == DeviceChoice.CPU:
         device = 'cpu'
@@ -68,18 +74,19 @@ class FilePathProcessor:
 
     def get_filepaths(self, filepath: str):
         """
-        Processes the provided filepath which can be a URL, a single file, a directory,
-        or a .list file containing multiple paths/URLs. It validates each input, downloads
-        URLs if necessary, and accumulates valid file paths for further processing.
+        Processes the provided filepath which can be a URL, a single file,
+        a directory, or a .list file containing multiple paths/URLs. It
+        validates each input, downloads URLs if necessary, and accumulates
+        valid file paths for further processing.
         """
         path = Path(filepath).expanduser().resolve()
-        
+
         try:
             # Handle URL
             if validators.url(filepath):
                 logging.info(f"Processing URL: {filepath}")
                 downloaded_path = download_utils.download_url(
-                    filepath, 
+                    filepath,
                     downloads_dir=Path('./downloads')
                 )
                 if downloaded_path:
@@ -87,28 +94,29 @@ class FilePathProcessor:
                 else:
                     logging.error(f"Failed to download URL: {filepath}")
                     print(f"→ Failed to download URL: {filepath}")
-                return  
+                return
 
             # Handle .list file
             elif path.suffix.lower() == '.list':
                 if not path.is_file():
-                    logging.error(f'The .list file "{path}" does not exist or is not a file.')
-                    print(f'→ The .list file "{path}" does not exist or is not a file.')
+                    msg = f"The .list '{path}' does not exist or is not a file"
+                    logging.error(msg)
+                    print(f'→ {msg}')
                     return
-                
+
                 logging.info(f"Processing .list file: {path}")
                 with path.open('r', encoding='utf-8') as file:
                     lpaths = set()
                     for line in file:
                         lpath = line.strip()
                         if not lpath:
-                            continue 
+                            continue
                         lpaths.add(lpath)
-                        
+
                     for lpath in lpaths:
                         if validators.url(lpath):
                             downloaded_path = download_utils.download_url(
-                                lpath, 
+                                lpath,
                                 downloads_dir=Path('./downloads')
                             )
                             if downloaded_path:
@@ -124,7 +132,10 @@ class FilePathProcessor:
                 self._process_path(path)
 
         except Exception as e:
-            logging.exception(f"An unexpected error occurred while processing '{filepath}': {e}")
+            logging.exception(
+                "An unexpected error occurred while processing "
+                f"'{filepath}': {e}"
+            )
             return
 
         # Remove duplicates by converting to a set of resolved absolute paths
@@ -133,13 +144,21 @@ class FilePathProcessor:
 
         # Filter out files that have already been converted
         self._filter_converted_files()
-        
+
         # Final check to ensure there are files to process
         if not self.filepaths:
-            logging.warning(f'No valid files found for processing. Please check the provided path: "{filepath}".')
-            print(f'→ No valid files found for processing. Please check the provided path: "{filepath}".')
+            logging.warning(
+                f'No valid files found for processing. '
+                f'Please check the provided path: "{filepath}".'
+            )
+            print(
+                f'→ No valid files found for processing. '
+                f'Please check the provided path: "{filepath}".'
+            )
         else:
-            logging.info(f"Total valid files to process: {len(self.filepaths)}")
+            logging.info(
+                f"Total valid files to process: {len(self.filepaths)}"
+            )
 
     def _process_path(self, path_input: str | Path):
         """
@@ -153,8 +172,14 @@ class FilePathProcessor:
                 normalized_path = self._normalize_filepath(path)
                 self.filepaths.append(normalized_path)
             else:
-                logging.warning(f'File "{path}" has unsupported format and will be skipped.')
-                print(f'→ File "{path}" has unsupported format and will be skipped.')
+                logging.warning(
+                    f"File '{path}' has unsupported format and "
+                    "will be skipped."
+                )
+                print(
+                    f"→ File '{path}' has unsupported format and "
+                    "will be skipped."
+                )
         elif path.is_dir():
             logging.info(f"Processing directory: {path}")
             for file_format in self.file_formats:
@@ -164,23 +189,26 @@ class FilePathProcessor:
                         normalized_path = self._normalize_filepath(file)
                         self.filepaths.append(normalized_path)
         else:
-            logging.error(f'Path "{path}" does not exist or is not accessible.')
+            logging.error(
+                f'Path "{path}" does not exist or is not accessible.'
+            )
             print(f'→ Path "{path}" does not exist or is not accessible.')
-             
+
     def _normalize_filepath(self, filepath: Path) -> Path:
         """
-        Normalizes the filepath by replacing non-word characters with underscores,
-        collapsing multiple underscores into one, and removing leading/trailing underscores.
+        Normalizes the filepath by replacing non-word characters with
+        underscores,collapsing multiple underscores into one, and removing
+        leading/trailing underscores.
         """
         new_filename = re.sub(r'\W+', '_', filepath.stem)
         new_filename = new_filename.strip('_')
         new_filename = re.sub(r'_+', '_', new_filename)
-        
+
         suffix = filepath.suffix.lower()
-        
+
         # Construct the new path
         new_path = filepath.parent / f"{new_filename}{suffix}"
-        
+
         # Rename the file
         filepath.rename(new_path)
 
@@ -188,24 +216,27 @@ class FilePathProcessor:
 
     def _filter_converted_files(self):
         """
-        Removes files that have already been converted to avoid redundant processing.
+        Removes files that have already been converted to avoid
+        redundant processing.
         """
         converted_suffix = '_converted.wav'
         original_filepaths = []
         converted_filepaths = set()
 
-        for fp in self.filepaths:            
+        for fp in self.filepaths:
             if fp.name.endswith(converted_suffix):
                 converted_filepaths.add(fp)
             else:
                 original_filepaths.append(fp)
-                
+
         # Remove originals if their converted version exists
         filtered_filepaths = [
             fp for fp in original_filepaths
-            if not (fp.with_name(fp.stem + converted_suffix) in converted_filepaths)
+            if not (
+                fp.with_name(fp.stem + converted_suffix) in converted_filepaths
+            )
         ]
-        
+
         # Extened filtered paths with converted paths
         filtered_filepaths.extend(converted_filepaths)
 
@@ -214,15 +245,18 @@ class FilePathProcessor:
             logging.info(f"Removed {removed_count} files already converted.")
         self.filepaths = filtered_filepaths
 
+
 def ensure_dir(dir: Path) -> None:
     if not dir.exists():
         dir.mkdir(parents=True)
     return dir
-        
+
+
 def set_output_dir(filepath: Path, base_dir: Path) -> None:
     output_dir = base_dir / filepath.stem
     ensure_dir(output_dir)
     return output_dir
+
 
 def return_valid_fileformats() -> list[str]:
     return [
@@ -240,50 +274,63 @@ def return_valid_fileformats() -> list[str]:
         '.vob'
         ]
 
+
 def load_audio_ffmpeg(filepath: str) -> np.ndarray:
     try:
         out, _ = (
             ffmpeg
             .input(filepath)
-            .output('pipe:', format='f32le', acodec='pcm_f32le', ac=1, ar='16000')
+            .output(
+                'pipe:',
+                format='f32le',
+                acodec='pcm_f32le',
+                ac=1,
+                ar='16000'
+            )
             .run(capture_stdout=True, capture_stderr=True)
         )
     except ffmpeg.Error as e:
-        raise RuntimeError(f"Error loading audio with ffmpeg: {e.stderr.decode()}") from e
+        raise RuntimeError(
+            f"Error loading audio with ffmpeg: {e.stderr.decode()}"
+        ) from e
     return np.frombuffer(out, np.float32)
 
+
 def check_file_format(
-    filepath: Path, 
+    filepath: Path,
     del_originals: bool = True
-    ) -> tuple[Path, np.ndarray]:
+) -> tuple[Path, np.ndarray]:
     """
-    Checks the format of an audio file and converts it if it doesn't meet specified criteria.
-    Then, loads the audio into a 1D NumPy array.
+    Checks the format of an audio file and converts it if it doesn't meet
+    specified criteria. Then, loads the audio into a 1D NumPy array.
 
-    The function uses `ffmpeg` to probe the metadata of an audio file at the given `filepath`.
-    It checks if the audio stream meets the following criteria:
-    - Codec name: 'pcm_s16le'
-    - Sample rate: 16000 Hz
-    - Number of channels: 1 (mono)
+    The function uses `ffmpeg` to probe the metadata of an audio file at
+    the given `filepath`. It checks if the audio stream meets the following
+    criteria:
+        - Codec name: 'pcm_s16le'
+        - Sample rate: 16000 Hz
+        - Number of channels: 1 (mono)
 
-    If the audio stream does not meet these criteria, the function attempts to convert the file
-    to meet the required format and saves the converted file with a '_converted.wav' suffix in the same directory.
-    After successful conversion, it deletes the original file.
+    If the audio stream does not meet these criteria, the function attempts
+    to convert the file to meet the required format and saves the converted
+    file with a '_converted.wav' suffix in the same directory. After successful
+    conversion, it deletes the original file.
 
-    Finally, it loads the audio (original or converted) as a 1D NumPy array and returns it.
+    Finally, it loads the audio (original or converted) as a 1D NumPy array
+    and returns it.
 
     Args:
-        filepath (Path): The path to the audio file to be checked and potentially converted.
+        filepath (Path): The path to the audio file to be checked and
+            potentially converted.
 
     Returns:
         filepath (Path): filepath of the checked and / or converted audio file.
         np.ndarray: 1D NumPy array of the audio data.
-    """     
+    """
     # Define the converted file path
     new_filepath = filepath.with_name(f"{filepath.stem}_converted.wav")
-    
+
     converted = False
-    
     if new_filepath.exists():
         target_filepath = new_filepath
         converted = True
@@ -291,26 +338,38 @@ def check_file_format(
         try:
             # Probe the audio file for stream information
             probe = ffmpeg.probe(str(filepath))
-            audio_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'audio']
-            
+            audio_streams = [
+                stream for stream in probe['streams']
+                if stream['codec_type'] == 'audio'
+            ]
+
             if not audio_streams:
-                raise ValueError(f"→ No audio stream found for {filepath}. Please check if the file you have provided contains audio content.")
-            
+                raise ValueError(
+                    f"→ No audio stream found for {filepath}. "
+                    f"Please check if the file you have provided contains "
+                    f"audio content."
+                )
+
             audio_stream = audio_streams[0]
             codec_name = audio_stream.get('codec_name')
             sample_rate = int(audio_stream.get('sample_rate', 0))
             channels = int(audio_stream.get('channels', 0))
-            
+
             # Check if the audio stream meets the criteria
-            if codec_name != 'pcm_s16le' or sample_rate != 16000 or channels != 1:
+            if (
+                codec_name != 'pcm_s16le'
+                or sample_rate != 16000
+                or channels != 1
+            ):
                 try:
                     # Convert the file and show progress
                     run_with_progress(
                         description=(
-                            f"[orchid]→ Converting file to .wav: {filepath.name}"
-                            ), 
+                            "[orchid]→ Converting file to .wav: "
+                            f"{filepath.name}"
+                            ),
                         task=lambda: convert_file_format(
-                            old_filepath=filepath, 
+                            old_filepath=filepath,
                             new_filepath=new_filepath
                             )
                     )
@@ -323,44 +382,54 @@ def check_file_format(
             else:
                 # If already in correct format, use the original file
                 target_filepath = filepath
-            
+
         except ffmpeg.Error as e:
-            print(f"→ Error running ffprobe: {e}")
-            print(f"→ You may have provided an unsupported file type.\
-Please check 'whisply --list_formats' for all supported formats.")
-    
+            print(
+                f"→ Error running ffprobe: {e} "
+                "  You may have provided an unsupported file type. Please "
+                "  check 'whisply --list_formats' for all supported formats."
+            )
+
     try:
         audio_array = load_audio_ffmpeg(str(target_filepath))
     except Exception as e:
-        raise RuntimeError(f"Failed to load audio from {target_filepath}: {e}") from e
-    
+        raise RuntimeError(
+            f"Failed to load audio from {target_filepath}: {e}"
+        ) from e
+
     # If conversion occurred delete the original file if del_originals
     if (converted and del_originals) and target_filepath != filepath:
         try:
             os.remove(filepath)
         except OSError as e:
             print(f"Warning: {e}")
-    
+
     return Path(target_filepath), audio_array
-       
+
+
 def convert_file_format(old_filepath: str, new_filepath: str):
     """
-    Converts a video file into an audio file in WAV format using the ffmpeg library.
+    Converts a video file into an audio file in WAV format using the
+    ffmpeg library.
     """
     (
         ffmpeg
         .input(str(old_filepath))
-        .output(str(new_filepath), 
-                acodec='pcm_s16le', # Audio codec: PCM signed 16-bit little-endian
-                ar='16000',         # Sampling rate 16 KHz
-                ac=1)               # Mono channel                       
+        .output(
+            str(new_filepath),
+            acodec='pcm_s16le',  # Audio codec: PCM signed 16-bit little-endian
+            ar='16000',          # Sampling rate 16 KHz
+            ac=1                 # Mono channel
+            )
         .run(quiet=True,
              overwrite_output=True)
     )
 
+
 def load_config(config: json) -> dict:
     with open(config, 'r', encoding='utf-8') as file:
         return json.load(file)
+
 
 def format_time(seconds, delimiter=',') -> str:
     """
@@ -370,9 +439,10 @@ def format_time(seconds, delimiter=',') -> str:
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     ms = int((seconds - int(seconds)) * 1000)
-    
+
     return f"{h:02}:{m:02}:{s:02}{delimiter}{ms:03}"
- 
+
+
 def run_with_progress(description: str, task: Callable[[], Any]) -> Any:
     """
     Helper function to run a task with a progress bar.
