@@ -1,11 +1,11 @@
 CSS = """
-    h1 { 
-        font-size: 36px; 
-        font-weight: 800; 
-    }  
-    
-    .svelte-1ed2p3z { 
-        text-align: center; 
+    h1 {
+        font-size: 36px;
+        font-weight: 800;
+    }
+
+    .svelte-1ed2p3z {
+        text-align: center;
     }
 
     #app-title {

@@ -16,7 +16,7 @@
   - [Install `ffmpeg`](#install-ffmpeg)
   - [Installation with `pip`](#installation-with-pip)
   - [Installation from `source`](#installation-from-source)
-  - [Nvidia GPU fix for Linux users (September 2025)](#nvidia-gpu-fix-september-2025)
+  - [Nvidia GPU fix for Linux users (November 2025)](#nvidia-gpu-fix-november-2025)
 - [Usage](#usage)
   - [CLI](#cli)
   - [App](#app)
@@ -135,7 +135,7 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
   pip install .
   ```
 
-### Nvidia GPU fix (September 2025)
+### Nvidia GPU fix (November 2025)
 <details>
 <summary><i>Could not load library libcudnn_ops.so.9</i> (<b>click to expand</b>)</summary>
 <br>If you use <b>whisply</b> with a Nvidia GPU and encounter this error:<br><br>
@@ -146,15 +146,22 @@ Unable to load any of {libcudnn_ops.so.9.1.0, libcudnn_ops.so.9.1, libcudnn_ops.
 
 <b>Use the following steps to fix the issue</b>:
 
-1. In your activated python environment run `pip list` and check that `torch==2.7.0` and `torchaudio==2.7.0` are installed.
+1. In your activated python environment run `pip list` and check that `torch==2.8.0` and `torchaudio==2.8.0` are installed.
 2. If yes, run `pip install ctranslate2==4.6.0`.
 3. Export the following environment variable to your shell:
 
 ```shell
-export LD_LIBRARY_PATH="$(python - <<'PY'
-import importlib.util, pathlib, sys
-spec = importlib.util.find_spec('nvidia.cudnn')
-print(pathlib.Path(spec.origin).parent / 'lib')
+export LD_LIBRARY_PATH="$(
+python - <<'PY'
+import importlib.util, pathlib
+
+spec = importlib.util.find_spec("nvidia.cudnn")
+if not spec or not spec.submodule_search_locations:
+    raise SystemExit("Could not locate nvidia.cudnn package")
+
+pkg_dir = pathlib.Path(spec.submodule_search_locations[0])
+lib_dir = pkg_dir / "lib"
+print(lib_dir)
 PY
 ):${LD_LIBRARY_PATH}"
 ```
@@ -162,7 +169,7 @@ PY
 4. To make the change permanent, run this bash command while your python environment is activated:
 
 ```shell
-printf '\n# --- add cuDNN wheel dir ---\nexport LD_LIBRARY_PATH="$(python - <<'"'"'PY'"'"'\nimport importlib.util, pathlib, sys\nprint(pathlib.Path(importlib.util.find_spec("nvidia.cudnn").origin).parent / "lib")\nPY\n):${LD_LIBRARY_PATH}"\n' >> "$VIRTUAL_ENV/bin/activate"
+printf '\n# --- add cuDNN wheel dir ---\nexport LD_LIBRARY_PATH="$(python - <<'"'"'PY'"'"'\nimport importlib.util, pathlib\nspec = importlib.util.find_spec("nvidia.cudnn")\npkg_dir = pathlib.Path(spec.submodule_search_locations[0])\nprint(pkg_dir / "lib")\nPY\n):${LD_LIBRARY_PATH}"\n' >> "$VIRTUAL_ENV/bin/activate"
 ```
 
 Finally, deactivate the environment and reactivate it to apply the changes.

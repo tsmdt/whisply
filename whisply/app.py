@@ -16,7 +16,7 @@ def zip_files(file_paths: list[str]) -> str:
     and return the path to that archive.
     """
     if not file_paths:
-        return None  
+        return None
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
         zip_path = tmp.name
@@ -35,7 +35,7 @@ def create_gradio_interface():
     """
     def get_device() -> str:
         """
-        Determine the computation device based on user preference and 
+        Determine the computation device based on user preference and
         availability.
         """
         import torch
@@ -48,7 +48,15 @@ def create_gradio_interface():
             device = 'cpu'
         return device
 
-    def transcribe(file, model, device, language, options, hf_token, sub_length):
+    def transcribe(
+        file,
+        model,
+        device,
+        language,
+        options,
+        hf_token,
+        sub_length
+    ):
         from whisply.transcription import TranscriptionHandler
         from whisply import little_helper, models
 
@@ -58,10 +66,19 @@ def create_gradio_interface():
         translate = 'Translate to English' in options
         subtitle = 'Generate Subtitles' in options
 
+        # Ensure hf_token is None if empty string
+        if not hf_token:
+            hf_token = None
+
         if (annotate or subtitle) and not hf_token:
             hf_token = os.getenv('HF_TOKEN')
             if not hf_token:
-                yield 'A HuggingFace Access Token is required for annotation or subtitling: https://huggingface.co/docs/hub/security-tokens', None
+                yield (
+                    'A HuggingFace Access Token is required for annotation '
+                    'or subtitling: '
+                    'https://huggingface.co/docs/hub/security-tokens',
+                    None
+                )
                 return
 
         if file is None:
@@ -88,11 +105,11 @@ def create_gradio_interface():
 
             temp_file_paths = []
             for uploaded_file in file:
-                # Get the base name of the file to avoid issues with absolute paths
+                # Get base name of the file to avoid issues with absolute paths
                 temp_file_name = os.path.basename(uploaded_file.name)
                 temp_file_path = os.path.join(temp_dir, temp_file_name)
 
-                # Copy the file from Gradio's temp directory to our local directory
+                # Copy the file from Gradio's temp directory to our local dir
                 shutil.copyfile(uploaded_file.name, temp_file_path)
                 temp_file_paths.append(temp_file_path)
 
@@ -104,7 +121,10 @@ def create_gradio_interface():
                 if torch.cuda.is_available():
                     device_selected = 'cuda:0'
                 else:
-                    print("→ CUDA is not available. Falling back to auto device selection.")
+                    print(
+                        "→ CUDA is not available. Falling back to auto "
+                        "device selection."
+                    )
                     device_selected = get_device()
             else:
                 device_selected = device
@@ -128,7 +148,7 @@ def create_gradio_interface():
 
             export_formats_list = list(export_formats_list)
 
-            # Create an instance of TranscriptionHandler with the provided parameters
+            # Create an instance of TranscriptionHandler with provided params
             handler = TranscriptionHandler(
                 base_dir='./app_transcriptions',
                 model=model,
@@ -147,13 +167,16 @@ def create_gradio_interface():
             handler.processed_files = []
             for idx, filepath in enumerate(temp_file_paths):
                 filepath = Path(filepath)
-                
+
                 # Update progress
                 current_step += 1
                 progress(current_step / total_steps)
 
                 # Create and set output_dir and output_filepath
-                handler.output_dir = little_helper.set_output_dir(filepath, handler.base_dir)
+                handler.output_dir = little_helper.set_output_dir(
+                    filepath,
+                    handler.base_dir
+                )
                 output_filepath = handler.output_dir / filepath.stem
 
                 # Convert file format
@@ -161,7 +184,7 @@ def create_gradio_interface():
                     filepath=filepath,
                     del_originals=False
                     )
-                
+
                 # Update progress
                 current_step += 1
                 progress(current_step / total_steps)
@@ -169,7 +192,7 @@ def create_gradio_interface():
                 # Detect file language
                 if not handler.file_language:
                     handler.detect_language(filepath, audio_array)
-                    
+
                 # Update progress
                 current_step += 1
                 progress(current_step / total_steps)
@@ -181,8 +204,13 @@ def create_gradio_interface():
                         implementation='insane-whisper',
                         translation=handler.translate
                     )
-                    print(f'→ Using {handler.device.upper()} and 🚅 Insanely-Fast-Whisper with model "{handler.model}"')
-                    result_data = handler.transcribe_with_insane_whisper(filepath)
+                    print(
+                        f"→ Using {handler.device.upper()} and 🚅 Insanely-"
+                        f"Fast-Whisper with model '{handler.model}'"
+                    )
+                    result_data = handler.transcribe_with_insane_whisper(
+                        filepath
+                    )
 
                 elif handler.device in ['cpu', 'cuda:0']:
                     if handler.annotate or handler.subtitle:
@@ -191,17 +219,27 @@ def create_gradio_interface():
                             implementation='whisperx',
                             translation=handler.translate
                         )
-                        print(f'→ Using {handler.device.upper()} and whisper🆇  with model "{handler.model}"')
-                        result_data = handler.transcribe_with_whisperx(filepath)
+                        print(
+                            f'→ Using {handler.device.upper()} and whisper🆇  '
+                            f'with model "{handler.model}"'
+                        )
+                        result_data = handler.transcribe_with_whisperx(
+                            filepath
+                        )
                     else:
                         handler.model = models.set_supported_model(
                             handler.model_provided,
                             implementation='faster-whisper',
                             translation=handler.translate
                         )
-                        print(f'→ Using {handler.device.upper()} and 🏃‍♀️‍➡️ Faster-Whisper with model "{handler.model}"')
-                        result_data = handler.transcribe_with_faster_whisper(filepath)
-                        
+                        print(
+                            f'→ Using {handler.device.upper()} and 🏃‍♀️‍➡️ '
+                            f'Faster-Whisper with model "{handler.model}"'
+                        )
+                        result_data = handler.transcribe_with_faster_whisper(
+                            filepath
+                        )
+
                 # Update progress
                 current_step += 1
                 progress(current_step / total_steps)
@@ -214,15 +252,18 @@ def create_gradio_interface():
                     'written_files': None,
                     'device': handler.device,
                     'model': handler.model,
-                    'transcription': result_data['transcription']['transcriptions'],
+                    'transcription': (
+                        result_data['transcription']['transcriptions']
+                    ),
                 }
 
                 # Save results
-                result['written_files'] = output_utils.OutputWriter().save_results(
-                        result=result,
-                        export_formats=handler.export_formats
-                        )
-                
+                writer = output_utils.OutputWriter()
+                result['written_files'] = writer.save_results(
+                    result=result,
+                    export_formats=handler.export_formats
+                )
+
                 # Update progress
                 current_step += 1
                 progress(current_step / total_steps)
@@ -252,14 +293,18 @@ def create_gradio_interface():
             yield output_files, output_files, gr.update(visible=True)
         else:
             yield "Transcription Error."
-            
+
     def toggle_visibility(options):
         """
-        Updates the visibility of conditional components based on selected options.
+        Updates the visibility of conditional components based on selected
+        options.
         """
         show_access_token = 'Annotate Speakers' in options
         show_subtitle_length = 'Generate Subtitles' in options
-        return gr.update(visible=show_access_token), gr.update(visible=show_subtitle_length)
+        return (
+            gr.update(visible=show_access_token),
+            gr.update(visible=show_subtitle_length)
+        )
 
     # Theme
     theme = gr.themes.Citrus(
@@ -268,7 +313,12 @@ def create_gradio_interface():
         spacing_size=gr.themes.sizes.spacing_sm,
         text_size="md",
         radius_size="sm",
-        font=[gr.themes.GoogleFont('Open Sans', 'Roboto'), 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        font=[
+            gr.themes.GoogleFont('Open Sans', 'Roboto'),
+            'ui-sans-serif',
+            'system-ui',
+            'sans-serif'
+        ],
         font_mono=['Roboto Mono', 'ui-monospace', 'Consolas', 'monospace'],
     )
 
@@ -276,17 +326,20 @@ def create_gradio_interface():
     with gr.Blocks(theme=theme, css=CSS) as app:
         gr.Markdown("# whisply 💬", elem_id="app-title")
         gr.Markdown(
-            """
-            Transcribe, translate, annotate, and subtitle audio and video files with \
-            OpenAI's Whisper ... fast!
-            """,
+            (
+                "Transcribe, translate, annotate, and subtitle audio and "
+                "video files with OpenAI's Whisper ... fast!"
+            ),
             elem_id="app-subtitle"
         )
 
         # File Upload and Model Selection
         with gr.Row():
             with gr.Column():
-                uploaded_files = gr.File(label="Upload File(s)", file_count='multiple')
+                uploaded_files = gr.File(
+                    label="Upload File(s)",
+                    file_count='multiple'
+                )
                 with gr.Row():
                     model_dropdown = gr.Dropdown(
                         choices=[
@@ -311,28 +364,41 @@ def create_gradio_interface():
                         info='Whisper model for the transcription.'
                     )
                     language_dropdown = gr.Dropdown(
-                    choices=sorted(LANGUAGES.keys()),
-                    label="Language",
-                    value='auto',
-                    info="**auto** = auto-detection"
+                        choices=sorted(LANGUAGES.keys()),
+                        label="Language",
+                        value='auto',
+                        info="**auto** = auto-detection"
                     )
                 with gr.Row():
                     device_radio = gr.Radio(
                         choices=['auto', 'cpu', 'gpu', 'mps'],
                         label="Device",
                         value='auto',
-                        info="**auto** = auto-detection | **gpu** = Nvidia GPUs | **mps** = Mac M1-M4"
+                        info=(
+                            "**auto** = auto-detection | **gpu** = Nvidia "
+                            "GPUs | **mps** = Mac M1-M4"
+                        )
                     )
                 with gr.Row():
                     options_checkbox = gr.CheckboxGroup(
-                        choices=['Annotate Speakers', 'Translate to English', 'Generate Subtitles'],
+                        choices=[
+                            'Annotate Speakers',
+                            'Translate to English',
+                            'Generate Subtitles'
+                        ],
                         label="Options",
                         value=[]
                     )
                 with gr.Row():
                     access_token_text = gr.Text(
-                        label='HuggingFace Access Token (for annotation and subtitling)',
-                        info="Refer to **README.md** to set up the Access Token correctly.",
+                        label=(
+                            'HuggingFace Access Token '
+                            '(for annotation and subtitling)'
+                        ),
+                        info=(
+                            "Refer to **README.md** to set up the Access "
+                            "Token correctly."
+                        ),
                         value=None,
                         lines=1,
                         max_lines=1,
@@ -342,24 +408,26 @@ def create_gradio_interface():
                     subtitle_length_number = gr.Number(
                         label="Subtitle Length (words)",
                         value=5,
-                        info="""Subtitle segment length in words. \
-                    (Example: "10" will result in subtitles where each subtitle block has \
-                    exactly 10 words)""",
+                        info=(
+                            "Subtitle segment length in words. "
+                            "(Example: '10' will result in subtitles "
+                            "where each subtitle block has exactly 10 words)"
+                        ),
                         visible=False
                     )
-                    
+
                     # Event Handler to Toggle Visibility
                     options_checkbox.change(
                         toggle_visibility,
                         inputs=options_checkbox,
                         outputs=[access_token_text, subtitle_length_number]
                     )
-            
+
             with gr.Column():
                 outputs = gr.Files(label="Transcriptions")
                 transcribed_files_state = gr.State([])
                 transcribe_button = gr.Button("Transcribe")
-                
+
                 # Download button
                 download_all_button = gr.Button(
                     value="Download Transcripts",
@@ -370,7 +438,7 @@ def create_gradio_interface():
                     outputs=[outputs],
                     inputs=[transcribed_files_state],
                 )
-                
+
                 # Transcribe button
                 transcribe_button.click(
                     transcribe,
@@ -384,19 +452,21 @@ def create_gradio_interface():
                         subtitle_length_number
                     ],
                     outputs=[
-                        outputs, 
-                        transcribed_files_state, 
-                        download_all_button # "visible=True" after transcription
+                        outputs,
+                        transcribed_files_state,
+                        download_all_button   # "visible=True" after run
                         ]
                 )
-                
+
             app.queue()
-    
+
     return app
-    
+
+
 def main():
     interface = create_gradio_interface()
     interface.launch()
+
 
 if __name__ == "__main__":
     main()
