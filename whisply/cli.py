@@ -39,8 +39,8 @@ def run_cmd(
         "--device",
         "-d",
         help=(
-            "Select your device: CPU, GPU (NVIDIA), "
-            "MPS or MLX (both Mac M1-M5)"
+            "CPU, GPU (NVIDIA), MLX (Mac M1-M5) "
+            "or MPS (legacy implementation for Mac M1-M5)"
         ),
     ),
     model: str = typer.Option(
@@ -59,7 +59,7 @@ def run_cmd(
         False,
         "--annotate",
         "-a",
-        help="Enable speaker annotation (Saves .rttm | Default: False)",
+        help="Enable speaker annotation (Default: False)",
     ),
     num_speakers: Optional[int] = typer.Option(
         None,
@@ -121,7 +121,7 @@ def run_cmd(
     ),
 ):
     """
-    💬 Transcribe files with whisply
+    Transcribe files with whisply
     """
     from whisply import little_helper, models
 
@@ -224,7 +224,7 @@ def run_cmd(
 @cli_app.command("app")
 def app_cmd():
     """
-    🦜 Launch the whisply app
+    Launch the whisply app
     """
     from whisply import little_helper
 
@@ -240,7 +240,7 @@ def app_cmd():
 @cli_app.command("list")
 def list_cmd():
     """
-    ⚙️ List available models
+    List available models
     """
     from whisply.models import WHISPER_MODELS
 

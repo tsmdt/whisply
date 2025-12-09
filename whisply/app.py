@@ -394,8 +394,8 @@ def create_gradio_interface():
                         value='auto',
                         info=(
                             "**auto** = auto-detection | **gpu** = Nvidia "
-                            "GPUs | **mps** = Mac M1-M4 (PyTorch) | "
-                            "**mlx** = Mac MLX"
+                            "GPUs | **mlx** = Mac M1-M5 | "
+                            "**mps** = Mac M1-M5 (legacy)"
                         )
                     )
                 with gr.Row():
