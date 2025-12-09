@@ -11,7 +11,6 @@
 ## Table of contents
 
 - [Features](#features)
-- [News](#news)
 - [Requirements](#requirements)
 - [Installation](#installation)
   - [Install `ffmpeg`](#install-ffmpeg)
@@ -29,19 +28,12 @@
     - [Using config files for batch processing](#using-config-files-for-batch-processing)
 - [Citation](#citation)
 
-## News
-
-🦜 `v0.13.0`
-
-- The `MLX` implementation is now the standard for running `whisply` on Apple Silicon Macs (M1-M5) and delivers a considerable performance increase compared to the `MPS` implementation
-- `MPS` is marked as legacy and will be removed in a future update
-
 ## Features
 
 * 🚴‍♂️ **Performance**: `whisply` selects the fastest Whisper implementation based on your hardware:
-  * CPU/GPU (Nvidia CUDA): `fast-whisper` or `whisperX`
+  * CPU/GPU (Nvidia CUDA): `faster-whisper` or `whisperX`
   * MLX (Apple M1-M5): `mlx-whisper`
-  * MPS (Apple M1-M5): `insanely-fast-whisper`
+  * MPS (Apple M1-M5) **legacy**: `insanely-fast-whisper`
 
 * ⏩ **large-v3-turbo Ready**: Support for [whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) on all devices. **Note**: Subtitling and annotations on CPU/GPU use `whisperX` for accurate timestamps, but `whisper-large-v3-turbo` isn’t currently available for `whisperX`.
 
