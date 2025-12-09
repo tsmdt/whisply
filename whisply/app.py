@@ -120,11 +120,10 @@ def create_gradio_interface():
                 requested_device=requested_device
             )
             if not deps_ok:
-                # Remove Rich-specific escaping for UI display
                 clean_message = deps_message.replace(
                     '\\[', '['
                     ).replace('\\]', ']')
-                gr.Warning(clean_message, duration=20)
+                gr.Warning(clean_message, duration=20)  # Disply msg for 20 sec
                 yield None, [], gr.update(visible=False)
                 return
 

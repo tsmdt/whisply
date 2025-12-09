@@ -6,7 +6,7 @@
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
-`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) and [mlx-whisper](https://huggingface.co/mlx-community/whisper-large-v3-turbo) to offer an easy-to-use solution for batch processing files on Windows, Linux and Mac. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
+`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) and [mlx-whisper](https://github.com/ml-explore/mlx) to offer an easy-to-use solution for batch processing files on Windows, Linux and Mac. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
 
 ## Table of contents
 
