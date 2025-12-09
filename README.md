@@ -6,7 +6,7 @@
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
-`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) to offer an easy-to-use solution for batch processing files on Windows, Linux and Mac. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
+`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) and [mlx-whisper](https://huggingface.co/mlx-community/whisper-large-v3-turbo) to offer an easy-to-use solution for batch processing files on Windows, Linux and Mac. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
 
 ## Table of contents
 
@@ -33,10 +33,11 @@
 * 🚴‍♂️ **Performance**: `whisply` selects the fastest Whisper implementation based on your hardware:
   * CPU/GPU (Nvidia CUDA): `fast-whisper` or `whisperX`
   * MPS (Apple M1-M4): `insanely-fast-whisper`
+  * MLX (Apple M-series): `mlx-whisper` (`--device mlx`)
 
 * ⏩ **large-v3-turbo Ready**: Support for [whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) on all devices. **Note**: Subtitling and annotations on CPU/GPU use `whisperX` for accurate timestamps, but `whisper-large-v3-turbo` isn’t currently available for `whisperX`.
 
-* ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) for transcription and translation unless a specific `--device` option is passed.
+* ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) for transcription and translation unless a specific `--device` option is passed. Use `--device mlx` to force the MLX pipeline on Apple Silicon.
 
 * 🗣️ **Word-level Annotations**: Enabling `--subtitle` or `--annotate` uses `whisperX` or `insanely-fast-whisper` for word segmentation and speaker annotations. `whisply` approximates missing timestamps for numeric words.
 
@@ -77,6 +78,10 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 
 ### Installation with `pip`
 
+> `pip install whisply` installs CPU + annotation dependencies (torch,
+> torchaudio, pyannote) out of the box. Add one of the extras below if you want
+> GPU/MPS/MLX acceleration or whisperX-based pipelines.
+
 1. Create a Python virtual environment
 
   ```shell
@@ -97,6 +102,15 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 
   ```shell
   pip install whisply
+  ```
+
+4. (Optional) Install device-specific extras when you need them
+
+  ```shell
+  pip install "whisply[gpu]"       # CUDA/NVIDIA extras (transformers, whisperX, lightning, optimum)
+  pip install "whisply[mps]"       # Apple Silicon (MPS) extras (transformers, whisperX, lightning)
+  pip install "whisply[mlx]"       # Apple Silicon (MLX) + mlx-whisper
+  pip install "whisply[whisperx]"  # whisperX on CPU (transformers)
   ```
 
 ### Installation from `source`

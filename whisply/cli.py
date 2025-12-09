@@ -38,7 +38,10 @@ def run_cmd(
         DeviceChoice.AUTO,
         "--device",
         "-d",
-        help="Select your device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4)",
+        help=(
+            "Select your device: CPU, GPU (NVIDIA), "
+            "MPS or MLX (both Mac M1-M5)"
+        ),
     ),
     model: str = typer.Option(
         "large-v3-turbo",
@@ -166,6 +169,14 @@ def run_cmd(
     # Determine the computation device
     device_str = little_helper.get_device(device=device)
 
+    deps_ok, deps_message = little_helper.check_dependencies_for_device(
+        device=device_str,
+        requested_device=device
+    )
+    if not deps_ok:
+        print(f"[blue1]→ {deps_message}")
+        raise typer.Exit(code=1)
+
     # Determine the ExportFormats
     export_formats = output_utils.determine_export_formats(
         export_format,
@@ -182,22 +193,26 @@ def run_cmd(
         from whisply.transcription import TranscriptionHandler
 
         # Instantiate TranscriptionHandler
-        service = TranscriptionHandler(
-            base_dir=output_dir,
-            device=device_str,
-            model=model,
-            file_language=lang,
-            annotate=annotate,
-            num_speakers=num_speakers,
-            translate=translate,
-            hf_token=hf_token,
-            subtitle=subtitle,
-            sub_length=sub_length,
-            verbose=verbose,
-            del_originals=del_originals,
-            corrections=corrections if post_correction else None,
-            export_formats=export_formats
-        )
+        try:
+            service = TranscriptionHandler(
+                base_dir=output_dir,
+                device=device_str,
+                model=model,
+                file_language=lang,
+                annotate=annotate,
+                num_speakers=num_speakers,
+                translate=translate,
+                hf_token=hf_token,
+                subtitle=subtitle,
+                sub_length=sub_length,
+                verbose=verbose,
+                del_originals=del_originals,
+                corrections=corrections if post_correction else None,
+                export_formats=export_formats
+            )
+        except RuntimeError as exc:
+            print(f"[blue1]→ {exc}")
+            raise typer.Exit(code=1)
         # Process files
         service.process_files(files)
     else:
@@ -211,6 +226,13 @@ def app_cmd():
     """
     🦜 Launch the whisply app
     """
+    from whisply import little_helper
+
+    deps_ok, deps_message = little_helper.check_app_dependencies()
+    if not deps_ok:
+        print(f"[blue1]→ {deps_message}")
+        raise typer.Exit(code=1)
+
     from whisply.app import main as run_gradio_app
     run_gradio_app()
 
@@ -218,13 +240,32 @@ def app_cmd():
 @cli_app.command("list")
 def list_cmd():
     """
-    ⚙️ List available models (Note: some models might not be available for
-    certain tasks like annotation or subtitling)
+    ⚙️ List available models
     """
-    from whisply import models
-    available_models = "[bold]Available models:\n... "
-    available_models += '\n... '.join(models.WHISPER_MODELS.keys())
-    print(f"{available_models}")
+    from whisply.models import WHISPER_MODELS
+
+    impl_device_map = {
+        'faster-whisper': ['cpu', 'gpu'],
+        'whisperx': ['cpu', 'gpu'],
+        'insane-whisper': ['mps'],
+        'mlx-whisper': ['mlx'],
+    }
+    device_order = ['cpu', 'gpu', 'mps', 'mlx']
+
+    print("[bold]Available models for each device:[/bold]")
+    for model_key, info in WHISPER_MODELS.items():
+        device_support = {device: False for device in device_order}
+        for impl, devices in impl_device_map.items():
+            if info.get(impl):
+                for device in devices:
+                    device_support[device] = True
+
+        supported_devices = [d for d in device_order if device_support[d]]
+        devices_str = ", ".join(supported_devices)
+
+        print(
+            f"[blue bold]{model_key:<18}[/][gold3]→ [deep_pink4]{devices_str}"
+        )
 
 
 def run():

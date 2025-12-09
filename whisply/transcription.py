@@ -309,6 +309,68 @@ class TranscriptionHandler:
 
         return transcription_dict
 
+    def to_mlx_chunks(self, mlx_result: dict) -> dict:
+        """
+        Normalize mlx-whisper results to a chunk-based structure that mirrors
+        the insanely-fast-whisper output.
+        """
+        def _to_float(value, default=0.0) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+        chunks = []
+        segments = mlx_result.get('segments') or []
+
+        for segment in segments:
+            seg_start = round(_to_float(segment.get('start'), 0.0), 2)
+            seg_end = round(
+                _to_float(segment.get('end'), seg_start),
+                2
+            )
+            words = segment.get('words') or []
+
+            if words:
+                for word in words:
+                    word_text = (
+                        word.get('word')
+                        or word.get('text')
+                        or str(word.get('token', '')).strip()
+                    )
+                    if not word_text:
+                        continue
+
+                    w_start = round(
+                        _to_float(word.get('start'), seg_start),
+                        2
+                    )
+                    w_end = round(
+                        _to_float(word.get('end'), w_start),
+                        2
+                    )
+
+                    chunks.append({
+                        'text': word_text.strip(),
+                        'timestamp': (w_start, w_end)
+                    })
+            else:
+                seg_text = segment.get('text', '').strip()
+                if seg_text:
+                    chunks.append({
+                        'text': seg_text,
+                        'timestamp': (seg_start, seg_end)
+                    })
+
+        if not chunks and mlx_result.get('text'):
+            chunks.append({
+                'text': mlx_result['text'].strip(),
+                'timestamp': (0.0, 0.0)
+            })
+
+        text = ' '.join([c['text'].strip() for c in chunks])
+        return {'text': text, 'chunks': chunks}
+
     def transcribe_with_whisperx(self, filepath: Path) -> dict:
         """
         Transcribe a file with the whisperX implementation that returns
@@ -753,6 +815,162 @@ class TranscriptionHandler:
                 f"👨‍💻 Transcription ended in {time.time() - t_start:.2f} sec."
             )
 
+    def transcribe_with_mlx_whisper(self, filepath: Path) -> dict:
+        """
+        Transcribes a file using the 'mlx-whisper' implementation:
+        https://huggingface.co/mlx-community
+
+        This method utilizes the MLX implementation of OpenAI Whisper for
+        Apple Silicon devices.
+        """
+        try:
+            import mlx_whisper
+        except ImportError as exc:
+            raise ImportError(
+                "mlx-whisper is required to run transcriptions on MLX. "
+                "Install it with `pip install mlx-whisper` (macOS only)."
+            ) from exc
+        from whisply import diarize_utils
+
+        def mlx_annotation(transcription_result: dict) -> dict:
+            annotation_result = diarize_utils.diarize(
+                transcription_result,
+                diarization_model='pyannote/speaker-diarization-3.1',
+                hf_token=self.hf_token,
+                file_name=str(filepath),
+                num_speakers=self.num_speakers,
+                min_speakers=None,
+                max_speakers=None,
+            )
+            return self.to_transcription_dict(annotation_result)
+
+        logging.info(
+            f"👨‍💻 Transcription started with 🍎 mlx-whisper "
+            f"for {filepath.name}"
+        )
+        t_start = time.time()
+
+        try:
+            def transcription_task(task: str = 'transcribe', language=None):
+                try:
+                    return mlx_whisper.transcribe(
+                        str(filepath),
+                        path_or_hf_repo=self.model,
+                        task=task,
+                        language=language,
+                        word_timestamps=True,
+                    )
+                except TypeError:
+                    logging.info(
+                        "mlx-whisper does not support `word_timestamps` in "
+                        "this version. Falling back to default call."
+                    )
+                    return mlx_whisper.transcribe(
+                        str(filepath),
+                        path_or_hf_repo=self.model,
+                        task=task,
+                        language=language,
+                    )
+
+            transcription_result = help.run_with_progress(
+                description=(
+                    f"[cyan]→ Transcribing ({self.device.upper()}) "
+                    f"[bold]{filepath.name}"
+                ),
+                task=partial(
+                    transcription_task,
+                    task='transcribe',
+                    language=self.file_language
+                )
+            )
+            transcription_result = self.to_mlx_chunks(transcription_result)
+
+            if self.annotate:
+                transcription_result = help.run_with_progress(
+                    description=(
+                        f"[purple]→ Annotating ({self.device.upper()}) "
+                        f"[bold]{filepath.name}"
+                    ),
+                    task=partial(
+                        mlx_annotation,
+                        transcription_result
+                    )
+                )
+
+            transcription_result = self.to_whisperx(transcription_result)
+            transcription_result = self.adjust_word_chunk_length(
+                transcription_result
+            )
+
+            result = {'transcriptions': {}}
+            result['transcriptions'][self.file_language] = transcription_result
+
+            if self.verbose:
+                print(result['transcriptions'][self.file_language]['text'])
+
+            translation_supported = models.WHISPER_MODELS.get(
+                self.model_provided,
+                {}
+            ).get('translation', False)
+
+            if self.translate and not translation_supported:
+                print(
+                    "[blue1]→ Translation is not available for the selected "
+                    "MLX model. Skipping translation."
+                )
+
+            if (
+                self.translate
+                and translation_supported
+                and self.file_language != 'en'
+            ):
+                translation_result = help.run_with_progress(
+                    description=(
+                        f"[dark_blue]→ Translating "
+                        f"({self.device.upper()}) [bold]{filepath.name}"
+                    ),
+                    task=partial(
+                        transcription_task,
+                        task='translate',
+                        language=self.file_language
+                    )
+                )
+                translation_result = self.to_mlx_chunks(translation_result)
+
+                if self.annotate:
+                    translation_result = help.run_with_progress(
+                        description=(
+                            f"[purple]→ Annotating ({self.device.upper()}) "
+                            f"[bold]{filepath.name}"
+                        ),
+                        task=partial(
+                            mlx_annotation,
+                            translation_result
+                        )
+                    )
+
+                translation_result = self.to_whisperx(translation_result)
+                translation_result = self.adjust_word_chunk_length(
+                    translation_result
+                )
+
+                result['transcriptions']['en'] = translation_result
+
+                if self.verbose:
+                    print(result['transcriptions']['en']['text'])
+
+            if self.annotate:
+                result = self.create_text_with_speakers(result)
+
+            return {'transcription': result}
+        except Exception:
+            logging.exception("Transcription failed with mlx-whisper")
+            raise
+        finally:
+            logging.info(
+                f"👨‍💻 Transcription ended in {time.time() - t_start:.2f} sec."
+            )
+
     def transcribe_with_faster_whisper(
         self,
         filepath: Path,
@@ -919,15 +1137,20 @@ class TranscriptionHandler:
         logging.info(f"Detecting language of file: {filepath.name}")
 
         def run_language_detection():
+            device_for_detection = (
+                'cpu' if self.device in ['mps', 'cpu', 'mlx'] else 'cuda'
+            )
             lang_detection_model = WhisperModel(
                 models.set_supported_model(
                     model=self.model_provided,
                     implementation='faster-whisper',
                     translation=self.translate
                     ),
-                device='cpu' if self.device in ['mps', 'cpu'] else 'cuda',
+                device=device_for_detection,
                 compute_type=(
-                    'int8' if self.device in ['mps', 'cpu'] else 'float16'
+                    'int8'
+                    if device_for_detection == 'cpu'
+                    else 'float16'
                     )
                 )
             lang, score, _ = lang_detection_model.detect_language(audio_array)
@@ -966,6 +1189,13 @@ class TranscriptionHandler:
         """
         logging.info(f"Provided parameters for processing: {self.metadata}")
 
+        # Check if dependencies for chosen device are installed
+        deps_ok, deps_message = help.check_dependencies_for_device(
+            device=self.device
+        )
+        if not deps_ok:
+            raise RuntimeError(deps_message)
+
         # Get filepaths
         filepath_handler = FilePathProcessor(self.file_formats)
         [filepath_handler.get_filepaths(f) for f in files]
@@ -994,7 +1224,19 @@ class TranscriptionHandler:
             logging.info(f"Transcribing file: {filepath.name}")
 
             # Transcription and speaker annotation
-            if self.device == 'mps':
+            if self.device == 'mlx':
+                self.model = models.set_supported_model(
+                    self.model_provided,
+                    implementation='mlx-whisper',
+                    translation=self.translate
+                )
+                print(
+                    f'[blue1]→ Using {self.device.upper()} and 🍎 MLX-Whisper '
+                    f'with model "{self.model}"'
+                )
+                result_data = self.transcribe_with_mlx_whisper(filepath)
+
+            elif self.device == 'mps':
                 self.model = models.set_supported_model(
                     self.model_provided,
                     implementation='insane-whisper',
