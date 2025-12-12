@@ -1,11 +1,14 @@
 /app_*
-/dev
+/dev*
+/dist*
 /downloads*
 /transcriptions
 /files*
 /legacy
+/log*
 /venv*
 /tests*
+/benchmark*
 .vscode
 .DS_Store
 *.log

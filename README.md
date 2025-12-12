@@ -6,7 +6,7 @@
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
-`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) to offer an easy-to-use solution for batch processing files on Windows, Linux and Mac. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
+`whisply` combines [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [insanely-fast-whisper](https://github.com/Vaibhavs10/insanely-fast-whisper) and [mlx-whisper](https://github.com/ml-explore/mlx) to offer an easy-to-use solution for batch processing files on Windows, Linux and Mac. It also enables word-level speaker annotation by integrating [whisperX](https://github.com/m-bain/whisperX) and [pyannote](https://github.com/pyannote/pyannote-audio).
 
 ## Table of contents
 
@@ -31,12 +31,13 @@
 ## Features
 
 * 🚴‍♂️ **Performance**: `whisply` selects the fastest Whisper implementation based on your hardware:
-  * CPU/GPU (Nvidia CUDA): `fast-whisper` or `whisperX`
-  * MPS (Apple M1-M4): `insanely-fast-whisper`
+  * CPU/GPU (Nvidia CUDA): `faster-whisper` or `whisperX`
+  * MLX (Apple M1-M5): `mlx-whisper`
+  * MPS (Apple M1-M5) **legacy**: `insanely-fast-whisper`
 
 * ⏩ **large-v3-turbo Ready**: Support for [whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) on all devices. **Note**: Subtitling and annotations on CPU/GPU use `whisperX` for accurate timestamps, but `whisper-large-v3-turbo` isn’t currently available for `whisperX`.
 
-* ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS, Nvidia GPUs) for transcription and translation unless a specific `--device` option is passed.
+* ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS) or `whisper-MLX` (Apple M1-M5) for transcription and translation unless a specific `--device` option is passed.
 
 * 🗣️ **Word-level Annotations**: Enabling `--subtitle` or `--annotate` uses `whisperX` or `insanely-fast-whisper` for word segmentation and speaker annotations. `whisply` approximates missing timestamps for numeric words.
 
@@ -51,10 +52,10 @@
 ## Requirements
 
 * [FFmpeg](https://ffmpeg.org/)
-* \>= Python3.10
+* \>= Python3.10 <Python3.14
 * GPU  processing requires:
   * Nvidia GPU (CUDA: cuBLAS and cuDNN for CUDA 12)
-  * Apple Metal Performance Shaders (MPS) (Mac M1-M4)
+  * Apple Silicon (Mac M1-M5)
 * Speaker annotation requires a [HuggingFace Access Token](https://huggingface.co/docs/hub/security-tokens)
 
 ## Installation
@@ -77,6 +78,10 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 
 ### Installation with `pip`
 
+> `pip install whisply` installs CPU + annotation dependencies (torch,
+> torchaudio, pyannote) out of the box. Add one of the extras below if you want
+> GPU/MPS/MLX acceleration or whisperX-based pipelines.
+
 1. Create a Python virtual environment
 
   ```shell
@@ -97,6 +102,13 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 
   ```shell
   pip install whisply
+  ```
+
+4. (Optional) Install extras if you need them
+
+  ```shell
+  pip install "whisply[app]"  # For running the whisply browser app
+  pip install "whisply[mlx]"  # For running whisply-MLX on Apple M1-M5
   ```
 
 ### Installation from `source`
@@ -133,6 +145,12 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 
   ```shell
   pip install .
+  ```
+
+6. (Optional) Install whisply extras
+
+  ```shell
+  pip install -e ".[mlx,app]"
   ```
 
 ### Nvidia GPU fix (November 2025)
@@ -187,31 +205,31 @@ Three CLI commands are available:
 2. `whisply app`: Starting the whisply browser app
 3. `whisply list`: Listing available models
 
-```shell
-$ whisply run                                                                    
+```text
+$ whisply run
 
  Usage: whisply run [OPTIONS]
 
- 💬 Transcribe files with whisply
+ Transcribe files with whisply
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ --files            -f         TEXT                                     Path to file, folder, URL or .list to process.                                      │
 │ --output_dir       -o         DIRECTORY                                Folder where transcripts should be saved. [default: transcriptions]                 │
-│ --device           -d         [auto|cpu|gpu|mps]                       Select the computation device: CPU, GPU (NVIDIA), or MPS (Mac M1-M4).               │
+│ --device           -d         [auto|cpu|gpu|mps|mlx]                   CPU, GPU (NVIDIA), MLX (Mac M1-M5) or MPS (legacy implementation for Mac M1-M5)     │
 │                                                                        [default: auto]                                                                     │
-│ --model            -m         TEXT                                     Whisper model to use (run "whisply list" to see options). [default: large-v3-turbo] │
-│ --lang             -l         TEXT                                     Language of provided file(s) ("en", "de") (Default: auto-detection).                │
-│ --annotate         -a                                                  Enable speaker annotation (Saves .rttm | Default: False).                           │
-│ --num_speakers     -num       INTEGER                                  Number of speakers to annotate (Default: auto-detection).                           │
-│ --hf_token         -hf        TEXT                                     HuggingFace Access token required for speaker annotation.                           │
-│ --subtitle         -s                                                  Create subtitles (Saves .srt, .vtt and .webvtt | Default: False).                   │
-│ --sub_length                  INTEGER                                  Subtitle segment length in words. [default: 5]                                      │
-│ --translate        -t                                                  Translate transcription to English (Default: False).                                │
-│ --export           -e         [all|json|txt|rttm|vtt|webvtt|srt|html]  Choose the export format. [default: all]                                            │
-│ --verbose          -v                                                  Print text chunks during transcription (Default: False).                            │
-│ --del_originals    -del                                                Delete original input files after file conversion. (Default: False)                 │
-│ --config                      PATH                                     Path to configuration file.                                                         │
-│ --post_correction  -post      PATH                                     Path to YAML file for post-correction.                                              │
+│ --model            -m         TEXT                                     Whisper model to use (run "whisply list" to see options) [default: large-v3-turbo]  │
+│ --lang             -l         TEXT                                     Language of your file(s) ("en", "de") (Default: auto-detection)                     │
+│ --annotate         -a                                                  Enable speaker annotation (Default: False)                                          │
+│ --num_speakers     -num       INTEGER                                  Number of speakers to annotate (Default: auto-detection)                            │
+│ --hf_token         -hf        TEXT                                     HuggingFace Access token required for speaker annotation                            │
+│ --subtitle         -s                                                  Create subtitles (Saves .srt, .vtt & .webvtt | Default: False)                      │
+│ --sub_length                  INTEGER                                  Subtitle segment length in words [default: 5]                                       │
+│ --translate        -t                                                  Translate transcription to English (Default: False)                                 │
+│ --export           -e         [all|json|txt|rttm|vtt|webvtt|srt|html]  Choose the export format [default: all]                                             │
+│ --verbose          -v                                                  Print text chunks during transcription (Default: False)                             │
+│ --del_originals    -del                                                Delete input files after file conversion. (Default: False)                          │
+│ --config                      PATH                                     Path to configuration file                                                          │
+│ --post_correction  -post      PATH                                     Path to YAML file for post-correction                                               │
 │ --help                                                                 Show this message and exit.                                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
@@ -296,7 +314,7 @@ You can provide a `.json` config file by using the `--config` option which makes
 {
     "files": "./files/my_files.list",          # Path to your files
     "output_dir": "./transcriptions",          # Output folder where transcriptions are saved
-    "device": "auto",                          # AUTO, GPU, MPS or CPU
+    "device": "auto",                          # AUTO, CPU, GPU, MLX or MPS
     "model": "large-v3-turbo",                 # Whisper model to use
     "lang": null,                              # Null for auto-detection or language codes ("en", "de", ...)
     "annotate": false,                         # Annotate speakers 

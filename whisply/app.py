@@ -33,21 +33,6 @@ def create_gradio_interface():
     """
     Main gradio interface.
     """
-    def get_device() -> str:
-        """
-        Determine the computation device based on user preference and
-        availability.
-        """
-        import torch
-
-        if torch.cuda.is_available():
-            device = 'cuda:0'
-        elif torch.backends.mps.is_available():
-            device = 'mps'
-        else:
-            device = 'cpu'
-        return device
-
     def transcribe(
         file,
         model,
@@ -58,7 +43,8 @@ def create_gradio_interface():
         sub_length
     ):
         from whisply.transcription import TranscriptionHandler
-        from whisply import little_helper, models
+        from whisply import little_helper as help
+        from whisply import models
 
         if not options:
             options = []
@@ -73,17 +59,14 @@ def create_gradio_interface():
         if (annotate or subtitle) and not hf_token:
             hf_token = os.getenv('HF_TOKEN')
             if not hf_token:
-                yield (
+                raise gr.Error(
                     'A HuggingFace Access Token is required for annotation '
                     'or subtitling: '
-                    'https://huggingface.co/docs/hub/security-tokens',
-                    None
+                    'https://huggingface.co/docs/hub/security-tokens'
                 )
-                return
 
         if file is None:
-            yield "Please upload a file.", None
-            return
+            raise gr.Error("Please upload a file.")
 
         # If file is not a list, make it a list
         if not isinstance(file, list):
@@ -114,20 +97,35 @@ def create_gradio_interface():
                 temp_file_paths.append(temp_file_path)
 
             # Adjust the device based on user selection
+            requested_device = device
             if device == 'auto':
-                device_selected = get_device()
+                device_selected = help.get_device()
             elif device == 'gpu':
-                import torch
-                if torch.cuda.is_available():
-                    device_selected = 'cuda:0'
-                else:
-                    print(
-                        "→ CUDA is not available. Falling back to auto "
-                        "device selection."
-                    )
-                    device_selected = get_device()
+                device_selected = help.get_device(
+                    help.DeviceChoice.GPU
+                )
+            elif device == 'mps':
+                device_selected = help.get_device(
+                    help.DeviceChoice.MPS
+                )
+            elif device == 'mlx':
+                device_selected = help.get_device(
+                    help.DeviceChoice.MLX
+                )
             else:
-                device_selected = device
+                device_selected = 'cpu'
+
+            deps_ok, deps_message = help.check_dependencies_for_device(
+                device=device_selected,
+                requested_device=requested_device
+            )
+            if not deps_ok:
+                clean_message = deps_message.replace(
+                    '\\[', '['
+                    ).replace('\\]', ']')
+                gr.Warning(clean_message, duration=20)  # Disply msg for 20 sec
+                yield None, [], gr.update(visible=False)
+                return
 
             # Handle export formats
             export_formats_map = {
@@ -149,19 +147,22 @@ def create_gradio_interface():
             export_formats_list = list(export_formats_list)
 
             # Create an instance of TranscriptionHandler with provided params
-            handler = TranscriptionHandler(
-                base_dir='./app_transcriptions',
-                model=model,
-                device=device_selected,
-                file_language=None if language == 'auto' else language,
-                annotate=annotate,
-                translate=translate,
-                subtitle=subtitle,
-                sub_length=int(sub_length) if subtitle else 5,
-                hf_token=hf_token,
-                verbose=False,
-                export_formats=export_formats_list
-            )
+            try:
+                handler = TranscriptionHandler(
+                    base_dir='./app_transcriptions',
+                    model=model,
+                    device=device_selected,
+                    file_language=None if language == 'auto' else language,
+                    annotate=annotate,
+                    translate=translate,
+                    subtitle=subtitle,
+                    sub_length=int(sub_length) if subtitle else 5,
+                    hf_token=hf_token,
+                    verbose=False,
+                    export_formats=export_formats_list
+                )
+            except RuntimeError as exc:
+                raise gr.Error(str(exc))
 
             # Initialize processed_files list
             handler.processed_files = []
@@ -173,14 +174,14 @@ def create_gradio_interface():
                 progress(current_step / total_steps)
 
                 # Create and set output_dir and output_filepath
-                handler.output_dir = little_helper.set_output_dir(
+                handler.output_dir = help.set_output_dir(
                     filepath,
                     handler.base_dir
                 )
                 output_filepath = handler.output_dir / filepath.stem
 
                 # Convert file format
-                filepath, audio_array = little_helper.check_file_format(
+                filepath, audio_array = help.check_file_format(
                     filepath=filepath,
                     del_originals=False
                     )
@@ -198,7 +199,21 @@ def create_gradio_interface():
                 progress(current_step / total_steps)
 
                 # Transcription and speaker annotation
-                if handler.device == 'mps':
+                if handler.device == 'mlx':
+                    handler.model = models.set_supported_model(
+                        handler.model_provided,
+                        implementation='mlx-whisper',
+                        translation=handler.translate
+                    )
+                    print(
+                        f"→ Using {handler.device.upper()} and 🍎 MLX-Whisper "
+                        f"with model '{handler.model}'"
+                    )
+                    result_data = handler.transcribe_with_mlx_whisper(
+                        filepath
+                    )
+
+                elif handler.device == 'mps':
                     handler.model = models.set_supported_model(
                         handler.model_provided,
                         implementation='insane-whisper',
@@ -273,9 +288,11 @@ def create_gradio_interface():
                 if not handler.file_language_provided:
                     handler.file_language = None
 
+        except gr.Error:
+            raise
         except Exception as e:
             print(f"→ Error during transcription: {e}")
-            yield f"Transcription Error: {e}", None
+            raise gr.Error(f"Transcription Error: {e}")
 
         finally:
             progress(100)
@@ -292,7 +309,7 @@ def create_gradio_interface():
 
             yield output_files, output_files, gr.update(visible=True)
         else:
-            yield "Transcription Error."
+            raise gr.Error("Transcription Error.")
 
     def toggle_visibility(options):
         """
@@ -371,12 +388,13 @@ def create_gradio_interface():
                     )
                 with gr.Row():
                     device_radio = gr.Radio(
-                        choices=['auto', 'cpu', 'gpu', 'mps'],
+                        choices=['auto', 'cpu', 'gpu', 'mps', 'mlx'],
                         label="Device",
                         value='auto',
                         info=(
                             "**auto** = auto-detection | **gpu** = Nvidia "
-                            "GPUs | **mps** = Mac M1-M4"
+                            "GPUs | **mlx** = Mac M1-M5 | "
+                            "**mps** = Mac M1-M5 (legacy)"
                         )
                     )
                 with gr.Row():

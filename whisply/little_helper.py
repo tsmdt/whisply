@@ -1,14 +1,16 @@
-import re
 import os
+import re
 import json
 import logging
 import ffmpeg
+import importlib.util
 import validators
 import numpy as np
+import platform
 
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Any, List
+from typing import Callable, Any, List, Optional
 from rich import print
 from rich.progress import (
     Progress,
@@ -29,6 +31,26 @@ class DeviceChoice(str, Enum):
     CPU = 'cpu'
     GPU = 'gpu'
     MPS = 'mps'
+    MLX = 'mlx'
+
+
+OPTIONAL_DEVICE_DEPENDENCIES = {
+    'mlx': {
+        'extra': 'mlx',
+        'packages': [
+            ('mlx-whisper', 'mlx_whisper')
+        ]
+    }
+}
+
+OPTIONAL_COMMAND_DEPENDENCIES = {
+    'app': {
+        'extra': 'app',
+        'packages': [
+            ('gradio', 'gradio')
+        ]
+    }
+}
 
 
 def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
@@ -36,32 +58,130 @@ def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
     Determine the computation device based on user preference and
     availability.
     """
-    import torch
+    torch_module = None
+    torch_available = False
+
+    if device != DeviceChoice.MLX:
+        try:
+            import torch as torch_module
+            torch_available = True
+        except ImportError:
+            torch_available = False
 
     if device == DeviceChoice.AUTO:
-        if torch.cuda.is_available():
+        if not torch_available:
+            return 'cpu'
+        if torch_module.cuda.is_available():
             device = 'cuda:0'
-        elif torch.backends.mps.is_available():
-            device = 'mps'
+        elif torch_module.backends.mps.is_available():
+            device = 'mlx'
         else:
             device = 'cpu'
     elif device == DeviceChoice.GPU:
-        if torch.cuda.is_available():
+        if torch_available and torch_module.cuda.is_available():
             device = 'cuda:0'
         else:
-            print("[blue1]→ NVIDIA GPU not available. Using CPU.")
+            print(
+                "[blue1]→ NVIDIA GPU not available or PyTorch missing. "
+                "Using CPU."
+            )
             device = 'cpu'
     elif device == DeviceChoice.MPS:
-        if torch.backends.mps.is_available():
+        if torch_available and torch_module.backends.mps.is_available():
             device = 'mps'
         else:
-            print("[blue1]→ MPS not available. Using CPU.")
+            print("[blue1]→ MPS not available or PyTorch missing. Using CPU.")
+            device = 'cpu'
+    elif device == DeviceChoice.MLX:
+        if platform.system() == 'Darwin':
+            device = 'mlx'
+        else:
+            print("[blue1]→ MLX is only available on macOS. Using CPU.")
             device = 'cpu'
     elif device == DeviceChoice.CPU:
         device = 'cpu'
     else:
         device = 'cpu'
     return device
+
+
+def _normalize_device_key(device: Optional[str]) -> str:
+    if not device:
+        return 'cpu'
+    if device in ['cuda', 'cuda:0', 'gpu']:
+        return 'cuda:0'
+    if device == 'mps':
+        return 'mps'
+    if device == 'mlx':
+        return 'mlx'
+    return 'cpu'
+
+
+def _missing_packages(packages: list[tuple[str, str]]) -> list[str]:
+    missing = []
+    for pip_name, module_name in packages:
+        if importlib.util.find_spec(module_name) is None:
+            missing.append(pip_name)
+    return missing
+
+
+def check_dependencies_for_device(
+    device: str,
+    requested_device: Optional[DeviceChoice | str] = None
+) -> tuple[bool, Optional[str]]:
+    """
+    Verify that optional dependencies for the selected device are installed.
+    Returns (ok, message).
+    """
+    target_device = requested_device
+    if isinstance(target_device, DeviceChoice):
+        target_device = target_device.value
+    if target_device in [None, DeviceChoice.AUTO.value]:
+        target_device = device
+
+    device_key = _normalize_device_key(target_device)
+    requirements = OPTIONAL_DEVICE_DEPENDENCIES.get(device_key)
+    if not requirements:
+        return True, None
+
+    missing = _missing_packages(requirements['packages'])
+    if missing:
+        extra = requirements.get('extra')
+        extras_hint = (
+            f' Install with `pip install "whisply\\[{extra}]"`.'
+            if extra else ""
+        )
+        message = (
+            f"Missing dependencies for device '{target_device}'. "
+            f"Install the following: {', '.join(missing)}.{extras_hint}"
+        )
+        return False, message
+
+    return True, None
+
+
+def check_app_dependencies() -> tuple[bool, Optional[str]]:
+    """
+    Verify that optional dependencies for the Gradio app command are installed.
+    Returns (ok, message).
+    """
+    requirements = OPTIONAL_COMMAND_DEPENDENCIES['app']
+    missing = _missing_packages(requirements['packages'])
+
+    if missing:
+        extra = requirements.get('extra')
+        if extra:
+            message = (
+                "Missing dependencies for the `whisply app` command. "
+                f'Install with `pip install "whisply\\[{extra}]"`.'
+            )
+        else:
+            message = (
+                "Missing dependencies for the `whisply app` command."
+            )
+        return False, message
+
+    return True, None
 
 
 class FilePathProcessor:
