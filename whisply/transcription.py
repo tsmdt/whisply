@@ -189,7 +189,7 @@ class TranscriptionHandler:
 
         chunks = []
         for word_chunk in split_into_chunks(words, self.sub_length):
-            chunk_text = ' '.join(
+            chunk_text = ''.join(
                 word_info['word'] for word_info in word_chunk
             )
             chunk_start = word_chunk[0]['start']
@@ -202,7 +202,7 @@ class TranscriptionHandler:
             chunks.append(chunk)
 
         result_temp = {
-            'text': ' '.join(chunk['text'].strip() for chunk in chunks),
+            'text': ''.join(chunk['text'] for chunk in chunks),
             'chunks': chunks
         }
 
@@ -235,14 +235,14 @@ class TranscriptionHandler:
         for c in transcription_result['chunks']:
             if 'speaker' in c:
                 word = {
-                    'word': c['text'].strip(),
+                    'word': c['text'],
                     'start': c['timestamp'][0],
                     'end': c['timestamp'][1],
                     'speaker': c['speaker']
                 }
             else:
                 word = {
-                    'word': c['text'].strip(),
+                    'word': c['text'],
                     'start': c['timestamp'][0],
                     'end': c['timestamp'][1]
                 }
@@ -253,7 +253,7 @@ class TranscriptionHandler:
                 {
                     'start': transcription_result['chunks'][0]['timestamp'][0],
                     'end': transcription_result['chunks'][-1]['timestamp'][1],
-                    'text': transcription_result['text'].strip(),
+                    'text': transcription_result['text'],
                     'words': words
                 }
             ]
@@ -300,8 +300,8 @@ class TranscriptionHandler:
                         text += f"\n[{start_timestamp}] [{speaker}] "
                         current_speaker = speaker
 
-                    # Append the word with a space
-                    text += word + " "
+                    # Append the word as-is (Whisper already includes proper spacing)
+                    text += word
 
             transcription_dict['transcriptions'][lang][
                 'text_with_speaker_annotation'
@@ -351,11 +351,11 @@ class TranscriptionHandler:
                     )
 
                     chunks.append({
-                        'text': word_text.strip(),
+                        'text': word_text,
                         'timestamp': (w_start, w_end)
                     })
             else:
-                seg_text = segment.get('text', '').strip()
+                seg_text = segment.get('text', '')
                 if seg_text:
                     chunks.append({
                         'text': seg_text,
@@ -364,11 +364,11 @@ class TranscriptionHandler:
 
         if not chunks and mlx_result.get('text'):
             chunks.append({
-                'text': mlx_result['text'].strip(),
+                'text': mlx_result['text'],
                 'timestamp': (0.0, 0.0)
             })
 
-        text = ' '.join([c['text'].strip() for c in chunks])
+        text = ''.join([c['text'] for c in chunks])
         return {'text': text, 'chunks': chunks}
 
     def transcribe_with_whisperx(self, filepath: Path) -> dict:
@@ -1035,9 +1035,9 @@ class TranscriptionHandler:
                         float(f"{segment.start:.2f}"),
                         float(f"{segment.end:.2f}")
                     ),
-                    'text': segment.text.strip(),
+                    'text': segment.text,
                     'words': [{
-                        'word': i.word.strip(),
+                        'word': i.word,
                         'start': float(f"{i.start:.2f}"),
                         'end': float(f"{i.end:.2f}"),
                         'score': float(f"{i.probability:.2f}")
@@ -1063,8 +1063,8 @@ class TranscriptionHandler:
         # Create result dict and append transcriptions to it
         result = {'transcriptions': {}}
         result['transcriptions'][self.file_language] = {
-                'text': ' '.join(
-                    [segment['text'].strip() for segment in chunks]
+                'text': ''.join(
+                    [segment['text'] for segment in chunks]
                     ),
                 'chunks': chunks
                 }
@@ -1088,9 +1088,9 @@ class TranscriptionHandler:
                             float(f"{segment.start:.2f}"),
                             float(f"{segment.end:.2f}")
                         ),
-                        'text': segment.text.strip(),
+                        'text': segment.text,
                         'words': [{
-                            'word': i.word.strip(),
+                            'word': i.word,
                             'start': float(f"{i.start:.2f}"),
                             'end': float(f"{i.end:.2f}"),
                             'score': float(f"{i.probability:.2f}")
@@ -1115,8 +1115,8 @@ class TranscriptionHandler:
 
             # Add translation to result dict
             result['transcriptions']['en'] = {
-                'text': ' '.join(
-                    [segment['text'].strip() for segment in translation_chunks]
+                'text': ''.join(
+                    [segment['text'] for segment in translation_chunks]
                     ),
                 'chunks': translation_chunks
                 }
