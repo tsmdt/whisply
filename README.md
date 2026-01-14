@@ -324,7 +324,7 @@ You can provide a `.json` config file by using the `--config` option which makes
     "sub_length": 10,                          # Length of each subtitle block in number of words
     "translate": false,                        # Translate to English
     "export": "txt",                           # Export .txts only
-    "verbose": false                           # Print transcription segments while processing 
+    "verbose": false,                          # Print transcription segments while processing 
     "del_originals": false,                    # Delete original input files after file conversion
     "post_correction": "my_corrections.yaml"   # Apply post correction with specified patterns in .yaml
 }
