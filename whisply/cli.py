@@ -111,6 +111,7 @@ def run_cmd(
     config: Optional[Path] = typer.Option(
         None,
         "--config",
+        "-c",
         help="Path to configuration file",
     ),
     post_correction: Optional[Path] = typer.Option(
@@ -128,10 +129,10 @@ def run_cmd(
     # Load configuration from config.json if provided
     if config:
         config_data = little_helper.load_config(config)
-        files = (
+        files = [(
             files or Path(config_data.get("files"))
             if config_data.get("files") else files
-        )
+        )]
         output_dir = (
             Path(config_data.get("output_dir"))
             if config_data.get("output_dir") else output_dir
@@ -213,6 +214,7 @@ def run_cmd(
         except RuntimeError as exc:
             print(f"[blue1]→ {exc}")
             raise typer.Exit(code=1)
+
         # Process files
         service.process_files(files)
     else:

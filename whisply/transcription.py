@@ -1170,7 +1170,7 @@ class TranscriptionHandler:
         print(f'[blue1]→ {msg}')
         logging.info(msg)
 
-    def process_files(self, files) -> None:
+    def process_files(self, files: list[str | Path]) -> None:
         """
         Processes a list of audio files for transcription and/or diarization.
 
