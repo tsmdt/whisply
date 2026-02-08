@@ -231,6 +231,9 @@ class TranscriptionHandler:
         """
         Normalize insanely-fast-whisper transcription result to whisperX dict.
         """
+        if not transcription_result.get('chunks'):
+            return {'segments': []}
+
         words = []
         for c in transcription_result['chunks']:
             if 'speaker' in c:
@@ -1273,6 +1276,23 @@ class TranscriptionHandler:
                         f'🏃‍♀️‍➡️ Faster-Whisper with model "{self.model}"'
                     )
                     result_data = self.transcribe_with_faster_whisper(filepath)
+
+            # Check if transcription contains speech
+            transcriptions = result_data['transcription']['transcriptions']
+            has_speech = any(
+                t.get('text', '').strip() for t in transcriptions.values()
+            )
+            if not has_speech:
+                logging.info(
+                    f"No speech detected in {filepath.name}. Skipping."
+                )
+                print(
+                    f'[yellow]→ No speech detected in '
+                    f'[bold]{filepath.name}[/bold]. Skipping.'
+                )
+                if not self.file_language_provided:
+                    self.file_language = None
+                continue
 
             result = {
                 'id': f'file_00{idx + 1}',

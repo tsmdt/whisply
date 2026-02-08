@@ -92,6 +92,10 @@ def diarize_audio(
             }
         )
 
+    # If no segments were found (e.g. silence-only audio), return early
+    if not segments:
+        return []
+
     # diarizer output may contain consecutive segments from the same
     # speaker (e.g. {(0 -> 1, speaker_1), (1 -> 1.5, speaker_1), ...})
     # we combine these segments to give overall timestamps for each
