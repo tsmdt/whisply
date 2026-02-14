@@ -1,3 +1,11 @@
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.codespell]
+# Ref: https://github.com/codespell-project/codespell#using-a-config-file
+skip = '.git*,.npm,.cache'
+check-hidden = true
+# ignore-regex = ''
+# fo, te - ISO 639-1 language codes for Faroese and Telugu
+ignore-words-list = 'fo,te'
