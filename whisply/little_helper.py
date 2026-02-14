@@ -357,7 +357,7 @@ class FilePathProcessor:
             )
         ]
 
-        # Extened filtered paths with converted paths
+        # Extended filtered paths with converted paths
         filtered_filepaths.extend(converted_filepaths)
 
         removed_count = len(self.filepaths) - len(filtered_filepaths)
