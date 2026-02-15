@@ -123,7 +123,7 @@ def create_gradio_interface():
                 clean_message = deps_message.replace(
                     '\\[', '['
                     ).replace('\\]', ']')
-                gr.Warning(clean_message, duration=20)  # Disply msg for 20 sec
+                gr.Warning(clean_message, duration=20)  # Display msg for 20 sec
                 yield None, [], gr.update(visible=False)
                 return
 
