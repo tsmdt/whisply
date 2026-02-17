@@ -114,6 +114,15 @@ def run_cmd(
         "-c",
         help="Path to configuration file",
     ),
+    dl_language: Optional[str] = typer.Option(
+        None,
+        "--dl_language",
+        "-dl",
+        help=(
+            'Language of the audio track to download from URLs ("en", "de")'
+            '(Default: default language of audio)'
+        ),
+    ),
     post_correction: Optional[Path] = typer.Option(
         None,
         "--post_correction",
@@ -150,6 +159,7 @@ def run_cmd(
         sub_length = config_data.get("sub_length", sub_length)
         verbose = config_data.get("verbose", verbose)
         del_originals = config_data.get("del_originals", del_originals)
+        dl_language = config_data.get("dl_language", dl_language)
         post_correction = config_data.get("post_correction", post_correction)
 
     # Check if provided model is available
@@ -208,6 +218,7 @@ def run_cmd(
                 sub_length=sub_length,
                 verbose=verbose,
                 del_originals=del_originals,
+                dl_language=dl_language,
                 corrections=corrections if post_correction else None,
                 export_formats=export_formats
             )

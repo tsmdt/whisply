@@ -188,8 +188,9 @@ class FilePathProcessor:
     """
     Utility class for validating various filepaths.
     """
-    def __init__(self, file_formats: List[str]):
+    def __init__(self, file_formats: List[str], dl_language: str = None):
         self.file_formats = [fmt.lower() for fmt in file_formats]
+        self.dl_language = dl_language
         self.filepaths: List[Path] = []
 
     def get_filepaths(self, filepath: str):
@@ -205,9 +206,13 @@ class FilePathProcessor:
             # Handle URL
             if validators.url(filepath):
                 logging.info(f"Processing URL: {filepath}")
+                dl_kwargs = {}
+                if self.dl_language:
+                    dl_kwargs['language'] = self.dl_language
                 downloaded_path = download_utils.download_url(
                     filepath,
-                    downloads_dir=Path('./downloads')
+                    downloads_dir=Path('./downloads'),
+                    **dl_kwargs
                 )
                 if downloaded_path:
                     self.filepaths.append(downloaded_path)
@@ -235,9 +240,13 @@ class FilePathProcessor:
 
                     for lpath in lpaths:
                         if validators.url(lpath):
+                            dl_kwargs = {}
+                            if self.dl_language:
+                                dl_kwargs['language'] = self.dl_language
                             downloaded_path = download_utils.download_url(
                                 lpath,
-                                downloads_dir=Path('./downloads')
+                                downloads_dir=Path('./downloads'),
+                                **dl_kwargs
                             )
                             if downloaded_path:
                                 self.filepaths.append(downloaded_path)

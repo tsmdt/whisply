@@ -13,7 +13,11 @@ logger = logging.getLogger('download_utils')
 logger.setLevel(logging.DEBUG)
 
 
-def download_url(url: str, downloads_dir: Path) -> Path:
+def download_url(
+    url: str,
+    downloads_dir: Path,
+    language: str = "en",
+) -> Path:
     """
     Downloads a media file from a specified URL, typically a YouTube URL,
     extracting audio in WAV format, and then renames the file based on the
@@ -46,9 +50,11 @@ def download_url(url: str, downloads_dir: Path) -> Path:
     """
     little_helper.ensure_dir(downloads_dir)
 
-    temp_filename = f"temp_{datetime.now().strftime('%Y%m%d_%H_%M_%S')}"
+    temp_filename = (
+        f"temp_{datetime.now().strftime('%Y%m%d_%H_%M_%S')}_{language}"
+    )
     options = {
-        'format': 'bestaudio/best',
+        'format': f'bestaudio[language={language}]',
         'postprocessors': [{'key': 'FFmpegExtractAudio',
                             'preferredcodec': 'wav',
                             'preferredquality': '192'}],
@@ -78,7 +84,8 @@ def download_url(url: str, downloads_dir: Path) -> Path:
 
             # Rename the file
             renamed_file = downloaded_file.rename(
-                f"{downloads_dir}/{new_filename}{downloaded_file.suffix}"
+                f"{downloads_dir}/{new_filename}"
+                f"_{language}_{downloaded_file.suffix}"
             )
             logger.debug(f"Renamed downloaded file to {renamed_file}")
             return Path(renamed_file)

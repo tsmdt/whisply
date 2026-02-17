@@ -122,6 +122,7 @@ class TranscriptionHandler:
         translate=False,
         verbose=False,
         del_originals=False,
+        dl_language=None,
         corrections=Corrections,
         export_formats='all'
     ):
@@ -140,6 +141,7 @@ class TranscriptionHandler:
         self.sub_length = sub_length
         self.verbose = verbose
         self.del_originals = del_originals
+        self.dl_language = dl_language
         self.corrections = corrections
         self.export_formats = export_formats
         self.metadata = self._collect_metadata()
@@ -1200,7 +1202,10 @@ class TranscriptionHandler:
             raise RuntimeError(deps_message)
 
         # Get filepaths
-        filepath_handler = FilePathProcessor(self.file_formats)
+        filepath_handler = FilePathProcessor(
+            self.file_formats,
+            dl_language=self.dl_language
+        )
         [filepath_handler.get_filepaths(f) for f in files]
         self.filepaths = filepath_handler.filepaths
 
