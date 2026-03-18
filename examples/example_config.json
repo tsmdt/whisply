@@ -3,14 +3,15 @@
     "output_dir": "./transcriptions",
     "device": "auto",
     "model": "large-v3-turbo",
-    "lang": null,
+    "language": null,
+    "download_language": null,
     "annotate": false,
     "hf_token": "hf_.......",
     "translate": false,
     "subtitle": false,
-    "sub_length": 10,
+    "subtitle_length": 10,
     "export": "txt",
     "verbose": false,
-    "del_originals": false,
+    "delete_originals": false,
     "post_correction": "my_corrections.yaml"
 }
