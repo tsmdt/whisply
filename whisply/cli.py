@@ -38,10 +38,7 @@ def run_cmd(
         DeviceChoice.AUTO,
         "--device",
         "-d",
-        help=(
-            "CPU, GPU (NVIDIA), MLX (Mac M1-M5) "
-            "or MPS (legacy)"
-        ),
+        help=("CPU, GPU (NVIDIA), MLX (Mac M1-M5)"),
     ),
     model: str = typer.Option(
         "large-v3-turbo",
@@ -261,10 +258,9 @@ def list_cmd():
     impl_device_map = {
         'faster-whisper': ['cpu', 'gpu'],
         'whisperx': ['cpu', 'gpu'],
-        'insane-whisper': ['mps'],
         'mlx-whisper': ['mlx'],
     }
-    device_order = ['cpu', 'gpu', 'mps', 'mlx']
+    device_order = ['cpu', 'gpu', 'mlx']
 
     print("[bold]Available models for each device:[/bold]")
     for model_key, info in WHISPER_MODELS.items():

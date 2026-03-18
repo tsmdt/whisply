@@ -30,7 +30,6 @@ class DeviceChoice(str, Enum):
     AUTO = 'auto'
     CPU = 'cpu'
     GPU = 'gpu'
-    MPS = 'mps'
     MLX = 'mlx'
 
 
@@ -86,12 +85,6 @@ def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
                 "Using CPU."
             )
             device = 'cpu'
-    elif device == DeviceChoice.MPS:
-        if torch_available and torch_module.backends.mps.is_available():
-            device = 'mps'
-        else:
-            print("[blue1]→ MPS not available or PyTorch missing. Using CPU.")
-            device = 'cpu'
     elif device == DeviceChoice.MLX:
         if platform.system() == 'Darwin':
             device = 'mlx'
@@ -110,8 +103,6 @@ def _normalize_device_key(device: Optional[str]) -> str:
         return 'cpu'
     if device in ['cuda', 'cuda:0', 'gpu']:
         return 'cuda:0'
-    if device == 'mps':
-        return 'mps'
     if device == 'mlx':
         return 'mlx'
     return 'cpu'
