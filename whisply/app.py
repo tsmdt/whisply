@@ -1,3 +1,4 @@
+import base64
 import gradio as gr
 import os
 import shutil
@@ -8,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from whisply import output_utils
 from whisply.app_helpers import CSS, LANGUAGES
+
+LOGO_PATH = Path(__file__).parent.parent / "assets" / "whisply.png"
 
 
 def zip_files(file_paths: list[str]) -> str:
@@ -103,10 +106,6 @@ def create_gradio_interface():
             elif device == 'gpu':
                 device_selected = help.get_device(
                     help.DeviceChoice.GPU
-                )
-            elif device == 'mps':
-                device_selected = help.get_device(
-                    help.DeviceChoice.MPS
                 )
             elif device == 'mlx':
                 device_selected = help.get_device(
@@ -210,20 +209,6 @@ def create_gradio_interface():
                         f"with model '{handler.model}'"
                     )
                     result_data = handler.transcribe_with_mlx_whisper(
-                        filepath
-                    )
-
-                elif handler.device == 'mps':
-                    handler.model = models.set_supported_model(
-                        handler.model_provided,
-                        implementation='insane-whisper',
-                        translation=handler.translate
-                    )
-                    print(
-                        f"→ Using {handler.device.upper()} and 🚅 Insanely-"
-                        f"Fast-Whisper with model '{handler.model}'"
-                    )
-                    result_data = handler.transcribe_with_insane_whisper(
                         filepath
                     )
 
@@ -341,13 +326,10 @@ def create_gradio_interface():
 
     # Build the Gradio Blocks interface
     with gr.Blocks(theme=theme, css=CSS) as app:
-        gr.Markdown("# whisply 💬", elem_id="app-title")
-        gr.Markdown(
-            (
-                "Transcribe, translate, annotate, and subtitle audio and "
-                "video files with OpenAI's Whisper ... fast!"
-            ),
-            elem_id="app-subtitle"
+        logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode()
+        gr.HTML(
+            f'<img src="data:image/png;base64,{logo_b64}" '
+            'style="max-height:160px;width:auto;display:block;margin:0 auto;">'
         )
 
         # File Upload and Model Selection
@@ -388,13 +370,12 @@ def create_gradio_interface():
                     )
                 with gr.Row():
                     device_radio = gr.Radio(
-                        choices=['auto', 'cpu', 'gpu', 'mps', 'mlx'],
+                        choices=['auto', 'cpu', 'gpu', 'mlx'],
                         label="Device",
                         value='auto',
                         info=(
                             "**auto** = auto-detection | **gpu** = Nvidia "
-                            "GPUs | **mlx** = Mac M1-M5 | "
-                            "**mps** = Mac M1-M5 (legacy)"
+                            "GPUs | **mlx** = Mac M1-M5"
                         )
                     )
                 with gr.Row():

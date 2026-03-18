@@ -32,28 +32,25 @@ def run_cmd(
         writable=True,
         readable=True,
         resolve_path=True,
-        help="Folder where transcripts should be saved.",
+        help="Output folder",
     ),
     device: DeviceChoice = typer.Option(
         DeviceChoice.AUTO,
         "--device",
         "-d",
-        help=(
-            "CPU, GPU (NVIDIA), MLX (Mac M1-M5) "
-            "or MPS (legacy implementation for Mac M1-M5)"
-        ),
+        help=("CPU, GPU (NVIDIA), MLX (Mac M1-M5)"),
     ),
     model: str = typer.Option(
         "large-v3-turbo",
         "--model",
         "-m",
-        help='Whisper model to use (run "whisply list" to see options)',
+        help='Whisper model (run "whisply list" to see options)',
     ),
     lang: Optional[str] = typer.Option(
         None,
-        "--lang",
+        "--language",
         "-l",
-        help='Language of your file(s) ("en", "de") (Default: auto-detection)',
+        help='Language of your file(s) ("en", "de") (Default: auto-detect)',
     ),
     annotate: bool = typer.Option(
         False,
@@ -65,7 +62,7 @@ def run_cmd(
         None,
         "--num_speakers",
         "-num",
-        help="Number of speakers to annotate (Default: auto-detection)",
+        help="Number of speakers to annotate (Default: auto-detect)",
     ),
     hf_token: Optional[str] = typer.Option(
         None,
@@ -77,11 +74,12 @@ def run_cmd(
         False,
         "--subtitle",
         "-s",
-        help="Create subtitles (Saves .srt, .vtt & .webvtt | Default: False)",
+        help="Create subtitles (Default: False)",
     ),
     sub_length: int = typer.Option(
         5,
-        "--sub_length",
+        "--subtitle_length",
+        "-sub_length",
         help="Subtitle segment length in words"
     ),
     translate: bool = typer.Option(
@@ -96,17 +94,20 @@ def run_cmd(
         "-e",
         help="Choose the export format"
     ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Print text chunks during transcription (Default: False)",
-    ),
     del_originals: bool = typer.Option(
         False,
         "--del_originals",
         "-del",
         help="Delete input files after file conversion. (Default: False)",
+    ),
+    download_lang: Optional[str] = typer.Option(
+        None,
+        "--download_language",
+        "-dl",
+        help=(
+            'Specify a language code ("en", "de" ...) to transcribe a '
+            'specific audio track of a URL. (Default: auto-detect)'
+        ),
     ),
     config: Optional[Path] = typer.Option(
         None,
@@ -120,6 +121,12 @@ def run_cmd(
         "-post",
         help="Path to YAML file for post-correction",
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Print text chunks during transcription (Default: False)",
+    )
 ):
     """
     Transcribe files with whisply
@@ -139,7 +146,7 @@ def run_cmd(
         )
         device = DeviceChoice(config_data.get("device", device.value))
         model = config_data.get("model", model)
-        lang = config_data.get("lang", lang)
+        lang = config_data.get("language", lang)
         annotate = config_data.get("annotate", annotate)
         num_speakers = config_data.get(
             "num_speakers", num_speakers
@@ -147,9 +154,10 @@ def run_cmd(
         translate = config_data.get("translate", translate)
         hf_token = config_data.get("hf_token", hf_token)
         subtitle = config_data.get("subtitle", subtitle)
-        sub_length = config_data.get("sub_length", sub_length)
+        sub_length = config_data.get("subtitle_length", sub_length)
         verbose = config_data.get("verbose", verbose)
-        del_originals = config_data.get("del_originals", del_originals)
+        del_originals = config_data.get("delete_originals", del_originals)
+        download_lang = config_data.get("download_language", download_lang)
         post_correction = config_data.get("post_correction", post_correction)
 
     # Check if provided model is available
@@ -208,6 +216,7 @@ def run_cmd(
                 sub_length=sub_length,
                 verbose=verbose,
                 del_originals=del_originals,
+                download_lang=download_lang,
                 corrections=corrections if post_correction else None,
                 export_formats=export_formats
             )
@@ -249,10 +258,9 @@ def list_cmd():
     impl_device_map = {
         'faster-whisper': ['cpu', 'gpu'],
         'whisperx': ['cpu', 'gpu'],
-        'insane-whisper': ['mps'],
         'mlx-whisper': ['mlx'],
     }
-    device_order = ['cpu', 'gpu', 'mps', 'mlx']
+    device_order = ['cpu', 'gpu', 'mlx']
 
     print("[bold]Available models for each device:[/bold]")
     for model_key, info in WHISPER_MODELS.items():

@@ -85,10 +85,6 @@ class TranscriptionHandler:
         transcribe_with_whisperx(filepath: Path) -> dict:
             Transcribes an audio file using the whisperX implementation.
 
-        transcribe_with_insane_whisper(filepath: Path) -> dict:
-            Transcribes an audio file using the insanely-fast-whisper
-            implementation.
-
         transcribe_with_faster_whisper(filepath: Path, num_workers: int = 1)
             -> dict:
             Transcribes an audio file using the faster-whisper implementation.
@@ -122,6 +118,7 @@ class TranscriptionHandler:
         translate=False,
         verbose=False,
         del_originals=False,
+        download_lang=None,
         corrections=Corrections,
         export_formats='all'
     ):
@@ -140,6 +137,7 @@ class TranscriptionHandler:
         self.sub_length = sub_length
         self.verbose = verbose
         self.del_originals = del_originals
+        self.download_lang = download_lang
         self.corrections = corrections
         self.export_formats = export_formats
         self.metadata = self._collect_metadata()
@@ -644,179 +642,6 @@ class TranscriptionHandler:
 
         return {'transcription': result}
 
-    def transcribe_with_insane_whisper(self, filepath: Path) -> dict:
-        """
-        Transcribes a file using the 'insanely-fast-whisper' implementation:
-        https://github.com/Vaibhavs10/insanely-fast-whisper
-
-        This method utilizes the 'insanely-fast-whisper' implementation of
-        OpenAI Whisper for automatic speech recognition on Mac M1-M4 devices.
-
-        Parameters:
-        - filepath (Path): The path to the audio file for transcription.
-
-        Returns:
-        - dict: A dictionary containing the transcription result and, if
-                speaker detection is enabled, the speaker diarization result.
-                The transcription result includes the recognized text and
-                timestamps if available.
-        """
-        import torch
-        from transformers import pipeline
-        from transformers import logging as hf_logger
-        from whisply import diarize_utils
-
-        hf_logger.set_verbosity_error()
-
-        def insane_whisper_annotation(transcription_result: dict) -> dict:
-            # Speaker annotation
-            annotation_result = diarize_utils.diarize(
-                transcription_result,
-                diarization_model='pyannote/speaker-diarization-3.1',
-                hf_token=self.hf_token,
-                file_name=str(filepath),
-                num_speakers=self.num_speakers,
-                min_speakers=None,
-                max_speakers=None,
-            )
-            # Transform annotation_result to correct dict structure
-            transcription_result = self.to_transcription_dict(
-                annotation_result
-            )
-            return transcription_result
-
-        # Start and time transcription
-        logging.info(
-            f"👨‍💻 Transcription started with 🚅 insane-whisper "
-            f"for {filepath.name}"
-        )
-        t_start = time.time()
-
-        try:
-            pipe = pipeline(
-                'automatic-speech-recognition',
-                model=self.model,
-                torch_dtype=torch.float16,
-                device=self.device,
-                model_kwargs={
-                    'attn_implementation': 'eager'
-                }
-            )
-
-            # Define transcription function
-            def transcription_task():
-                transcription_result = pipe(
-                    str(filepath),
-                    batch_size=1,
-                    return_timestamps='word',
-                    generate_kwargs={
-                        'use_cache': True,
-                        'return_legacy_cache': False,
-                        'language': self.file_language,
-                        'task': "transcribe",
-                        'forced_decoder_ids': None
-                    }
-                )
-                return transcription_result
-
-            # Transcription
-            transcription_result = help.run_with_progress(
-                description=(
-                    f"[cyan]→ Transcribing ({self.device.upper()}) "
-                    f"[bold]{filepath.name}"
-                ),
-                task=transcription_task
-            )
-
-            # Speaker annotation
-            if self.annotate:
-                transcription_result = help.run_with_progress(
-                    description=(
-                        f"[purple]→ Annotating ({self.device.upper()}) "
-                        f"[bold]{filepath.name}"
-                    ),
-                    task=partial(
-                        insane_whisper_annotation,
-                        transcription_result
-                    )
-                )
-
-            # Adjust word chunk length
-            transcription_result = self.to_whisperx(transcription_result)
-            transcription_result = self.adjust_word_chunk_length(
-                transcription_result
-            )
-
-            # Build result dict
-            result = {'transcriptions': {}}
-            result['transcriptions'] = {
-                self.file_language: transcription_result
-            }
-
-            if self.verbose:
-                print(result['transcriptions'][self.file_language]['text'])
-
-            # Translation
-            if self.translate and self.file_language != 'en':
-                def translation_task():
-                    translation_result = pipe(
-                        str(filepath),
-                        batch_size=1,
-                        return_timestamps='word',
-                        generate_kwargs={
-                            'use_cache': True,
-                            'return_legacy_cache': False,
-                            'task': 'translate',
-                            # 'forced_decoder_ids': None
-                        }
-                    )
-                    return translation_result
-
-                # Run the translation task
-                translation_result = help.run_with_progress(
-                    description=(
-                        f"[dark_blue]→ Translating ({self.device.upper()}) "
-                        f"[bold]{filepath.name}"
-                    ),
-                    task=translation_task
-                )
-
-                # Speaker annotation
-                if self.annotate:
-                    translation_result = help.run_with_progress(
-                        description=(
-                            f"[purple]→ Annotating ({self.device.upper()}) "
-                            f"[bold]{filepath.name}"
-                        ),
-                        task=partial(
-                            insane_whisper_annotation,
-                            translation_result
-                        )
-                    )
-
-                # Adjust word chunk length
-                translation_result = self.to_whisperx(translation_result)
-                translation_result = (
-                    self.adjust_word_chunk_length(translation_result)
-                )
-
-                result['transcriptions']['en'] = translation_result
-
-                if self.verbose:
-                    print(result['transcriptions']['en']['text'])
-
-            if self.annotate:
-                # Create full transcription with speaker annotation
-                result = self.create_text_with_speakers(result)
-
-            return {'transcription': result}
-        except Exception:
-            logging.exception("Transcription failed with insane-whisper")
-            raise
-        finally:
-            logging.info(
-                f"👨‍💻 Transcription ended in {time.time() - t_start:.2f} sec."
-            )
 
     def transcribe_with_mlx_whisper(self, filepath: Path) -> dict:
         """
@@ -1200,7 +1025,10 @@ class TranscriptionHandler:
             raise RuntimeError(deps_message)
 
         # Get filepaths
-        filepath_handler = FilePathProcessor(self.file_formats)
+        filepath_handler = FilePathProcessor(
+            self.file_formats,
+            download_lang=self.download_lang
+        )
         [filepath_handler.get_filepaths(f) for f in files]
         self.filepaths = filepath_handler.filepaths
 
@@ -1226,7 +1054,8 @@ class TranscriptionHandler:
 
             logging.info(f"Transcribing file: {filepath.name}")
 
-            # Transcription and speaker annotation
+            ### Transcription and speaker annotation
+            # MLX
             if self.device == 'mlx':
                 self.model = models.set_supported_model(
                     self.model_provided,
@@ -1239,18 +1068,8 @@ class TranscriptionHandler:
                 )
                 result_data = self.transcribe_with_mlx_whisper(filepath)
 
-            elif self.device == 'mps':
-                self.model = models.set_supported_model(
-                    self.model_provided,
-                    implementation='insane-whisper',
-                    translation=self.translate
-                )
-                print(
-                    f'[blue1]→ Using {self.device.upper()} and 🚅 '
-                    f'Insanely-Fast-Whisper with model "{self.model}"'
-                )
-                result_data = self.transcribe_with_insane_whisper(filepath)
 
+            # CPU, GPU (CUDA)
             elif self.device in ['cpu', 'cuda:0']:
                 if self.annotate or self.subtitle:
                     # WhisperX for annotation / subtitling

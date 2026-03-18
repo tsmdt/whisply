@@ -30,7 +30,6 @@ class DeviceChoice(str, Enum):
     AUTO = 'auto'
     CPU = 'cpu'
     GPU = 'gpu'
-    MPS = 'mps'
     MLX = 'mlx'
 
 
@@ -86,12 +85,6 @@ def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
                 "Using CPU."
             )
             device = 'cpu'
-    elif device == DeviceChoice.MPS:
-        if torch_available and torch_module.backends.mps.is_available():
-            device = 'mps'
-        else:
-            print("[blue1]→ MPS not available or PyTorch missing. Using CPU.")
-            device = 'cpu'
     elif device == DeviceChoice.MLX:
         if platform.system() == 'Darwin':
             device = 'mlx'
@@ -110,8 +103,6 @@ def _normalize_device_key(device: Optional[str]) -> str:
         return 'cpu'
     if device in ['cuda', 'cuda:0', 'gpu']:
         return 'cuda:0'
-    if device == 'mps':
-        return 'mps'
     if device == 'mlx':
         return 'mlx'
     return 'cpu'
@@ -188,8 +179,13 @@ class FilePathProcessor:
     """
     Utility class for validating various filepaths.
     """
-    def __init__(self, file_formats: List[str]):
+    def __init__(
+        self,
+        file_formats: List[str],
+        download_lang: str = None
+    ):
         self.file_formats = [fmt.lower() for fmt in file_formats]
+        self.download_lang = download_lang
         self.filepaths: List[Path] = []
 
     def get_filepaths(self, filepath: str):
@@ -205,9 +201,13 @@ class FilePathProcessor:
             # Handle URL
             if validators.url(filepath):
                 logging.info(f"Processing URL: {filepath}")
+                dl_kwargs = {}
+                if self.download_lang:
+                    dl_kwargs['language'] = self.download_lang
                 downloaded_path = download_utils.download_url(
                     filepath,
-                    downloads_dir=Path('./downloads')
+                    downloads_dir=Path('./downloads'),
+                    **dl_kwargs
                 )
                 if downloaded_path:
                     self.filepaths.append(downloaded_path)
@@ -235,9 +235,13 @@ class FilePathProcessor:
 
                     for lpath in lpaths:
                         if validators.url(lpath):
+                            dl_kwargs = {}
+                            if self.download_lang:
+                                dl_kwargs['language'] = self.download_lang
                             downloaded_path = download_utils.download_url(
                                 lpath,
-                                downloads_dir=Path('./downloads')
+                                downloads_dir=Path('./downloads'),
+                                **dl_kwargs
                             )
                             if downloaded_path:
                                 self.filepaths.append(downloaded_path)
