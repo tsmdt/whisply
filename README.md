@@ -83,7 +83,7 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 
 > `pip install whisply` installs CPU + annotation dependencies (torch,
 > torchaudio, pyannote) out of the box. Add one of the extras below if you want
-> GPU/MPS/MLX acceleration or whisperX-based pipelines.
+> MLX acceleration or the whisply browser app.
 
 1. Create a Python virtual environment
 
