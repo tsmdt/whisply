@@ -36,15 +36,15 @@
 
 - ⏩ **large-v3-turbo Ready**: Support for [whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) on all devices. **Note**: Subtitling and annotations on CPU/GPU use `whisperX` for accurate timestamps, but `whisper-large-v3-turbo` isn’t currently available for `whisperX`.
 
-- ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU) or `insanely-fast-whisper` (MPS) or `whisper-MLX` (Apple M1-M5) for transcription and translation unless a specific `--device` option is passed.
+- ✅ **Auto Device Selection**: `whisply` automatically chooses `faster-whisper` (CPU, Nvidia GPU) or `whisper-MLX` (Apple M1-M5) for transcription and translation unless a specific `--device` option is passed.
 
-- 🗣️ **Word-level Annotations**: Enabling `--subtitle` or `--annotate` uses `whisperX` or `insanely-fast-whisper` for word segmentation and speaker annotations. `whisply` approximates missing timestamps for numeric words.
+- 🗣️ **Word-level Annotations**: Enabling `--subtitle` or `--annotate` uses `whisperX` and `pyannote` for word segmentation and speaker annotations. `whisply` approximates missing timestamps for numeric words.
 
 - 💬 **Customizable Subtitles**: Specify words per subtitle block (e.g., "5") to generate `.srt`, `.vtt` and `.webvtt` files with fixed word counts and timestamps.
 
 - 📦 **Batch Processing**: Handle single files, folders, URLs, or lists via `.list` documents. See the [Batch processing](#batch-processing) section for details.
 
-- 👩‍💻 **CLI / App**: `whisply` can be run directly from CLI or as an app with a graphical user-interface (GUI).
+- 👩‍💻 **CLI / App**: `whisply` can be run directly from CLI or as a browser app.
 
 - ⚙️ **Export Formats**:
   - Structured: `.json`, `.rttm`
@@ -241,7 +241,7 @@ $ whisply run
 
 ### App
 
-Instead of running `whisply` from the CLI you can start the web app instead:
+Instead of running `whisply` from the CLI you can start the browser app instead:
 
 ```shell
 $ whisply app
