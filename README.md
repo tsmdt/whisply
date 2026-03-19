@@ -110,8 +110,8 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
 4. (Optional) Install extras if you need them
 
   ```shell
-  pip install "whisply[app]"  # For running the whisply browser app
-  pip install "whisply[mlx]"  # For running whisply-MLX on Apple M1-M5
+  pip install ".[app]"  # For running the whisply browser app
+  pip install ".[mlx]"  # For running whisply-MLX on Apple M1-M5
   ```
 
 ### Installation from `source`
