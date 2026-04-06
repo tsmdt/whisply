@@ -337,4 +337,4 @@ You can provide a `.json` config file by using the `--config` option which makes
 
 ### Citation
 
-> Schmidt, T., & Shigapov, R. *whisply* (v0.14.0) [Computer software]. https://github.com/tsmdt/whisply
+> Schmidt, T. (2026). whisply: Cross-Platform Python App for Batch Transcription, Translation, Speaker Annotation and Subtitle Generation of Video and Audio Content (v0.14.0). Zenodo. https://doi.org/10.5281/zenodo.19437856
