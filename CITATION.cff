@@ -2,7 +2,10 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: whisply
+title: >-
+  whisply: Cross-Platform Python App for Batch
+  Transcription, Translation, Speaker Annotation and
+  Subtitle Generation of Video and Audio Content
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
@@ -13,12 +16,11 @@ authors:
     email: thomas.schmidt@uni-mannheim.de
     affiliation: 'University of Mannheim, University Library'
     orcid: 'https://orcid.org/0000-0003-3620-3355'
-  - given-names: Renat
-    family-names: Shigapov
-    email: renat.shigapov@uni-mannheim.de
-    affiliation: 'University of Mannheim, University Library'
-    orcid: 'https://orcid.org/0000-0002-0331-2558'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.19437856
 repository-code: 'https://github.com/tsmdt/whisply'
+abstract: "Automated Transcription, Translation, and Speaker Diarization for Research\n\nwhisply is a fast Python tool designed to transcribe, translate, and annotate audio and video files using OpenAI's open-weight Whisper models. It optimizes batch processing by integrating specialized implementations such as\_faster-whisper, mlx-whisper, and whisperX.\n\nKey Features:\n\nHardware-Optimized Performance: Automatically selects the fastest Whisper implementation based on your hardware (NVIDIA GPU via CUDA, Apple Silicon M1-M5 via MLX, or CPU).\n\nSpeaker Diarization: Provides word-level speaker annotations by integrating pyannote.audio, making it ideal for transcribing qualitative interviews and group discussions.\n\nBatch Processing: Efficiently handles single files, folders, URLs, or batch lists, with support for configuration files to streamline research workflows.\n\nVersatile Export Formats: Generates structured data (JSON, RTTM), plain or annotated TXT, HTML (compatible with the noScribe editor), and various subtitle formats (SRT, VTT, WebVTT).\n\nData Privacy: Runs entirely locally on your own hardware, ensuring the confidentiality and security of sensitive research data.\n\nCLI and App:\n\nwhisply is available as both a command-line interface (CLI) and a browser-based app (gradio), supporting Windows, Linux, and macOS.\n\nInstallation Instructions:\n\nRefer the ReadMe of the GitHub repository for detailed installation instructions: https://github.com/tsmdt/whisply"
 keywords:
   - whisper
   - asr
@@ -27,3 +29,5 @@ keywords:
   - speech-to-text
   - audio-transcription
 license: MIT
+version: v0.14.0
+date-released: '2026-04-06'
