@@ -10,7 +10,8 @@ from pathlib import Path
 from whisply import output_utils
 from whisply.app_helpers import CSS, LANGUAGES
 
-LOGO_PATH = Path(__file__).parent.parent / "assets" / "whisply.png"
+
+LOGO_PATH = Path(__file__).parent / "assets" / "whisply.png"
 
 
 def zip_files(file_paths: list[str]) -> str:

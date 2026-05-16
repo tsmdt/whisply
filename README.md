@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/whisply.svg)](https://badge.fury.io/py/whisply) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19437856.svg)](https://doi.org/10.5281/zenodo.19437856)
 
-<img src="assets/whisply.png" width="25%">
+<img src="whisply/assets/whisply.png" width="25%">
 
 *Transcribe, translate, annotate and subtitle audio and video files with OpenAI's [Whisper](https://github.com/openai/whisper) ... fast!*
 
