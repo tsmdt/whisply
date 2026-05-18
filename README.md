@@ -254,7 +254,7 @@ Open the local URL in your browser after starting the app (**Note**: The URL mig
 ```
 
 <p align="center">
-  <img src="./assets/whisply_app.png" width="60%">
+  <img src="./whisply/assets/whisply_app.png" width="60%">
 </p>
 
 ### Speaker annotation and diarization
