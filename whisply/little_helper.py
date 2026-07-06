@@ -356,9 +356,8 @@ class FilePathProcessor:
         # Remove originals if their converted version exists
         filtered_filepaths = [
             fp for fp in original_filepaths
-            if not (
-                fp.with_name(fp.stem + converted_suffix) in converted_filepaths
-            )
+            if fp.with_name(fp.stem + converted_suffix) 
+            not in converted_filepaths
         ]
 
         # Extened filtered paths with converted paths

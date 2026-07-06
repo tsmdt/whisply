@@ -115,7 +115,7 @@ def download_url(
 
             renamed_file = downloaded_file.rename(
                 f"{downloads_dir}/{new_filename}"
-                f"_{language}_{downloaded_file.suffix}"
+                f"_{language}{downloaded_file.suffix}"
             )
             logger.debug(f"Renamed downloaded file to {renamed_file}")
             return Path(renamed_file)
