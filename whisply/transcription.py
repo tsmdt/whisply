@@ -642,6 +642,21 @@ class TranscriptionHandler:
 
         return {'transcription': result}
 
+    def _resolve_mlx_model_path(self) -> str:
+        """
+        Save the MLX model to a local directory path.
+        """
+        if Path(self.model).exists():
+            return self.model
+
+        from huggingface_hub import snapshot_download
+        from huggingface_hub.utils import LocalEntryNotFoundError
+
+        try:
+            return snapshot_download(self.model, local_files_only=True)
+        except LocalEntryNotFoundError:
+            print(f'[blue1]→ Downloading model "{self.model}" ...')
+            return snapshot_download(self.model)
 
     def transcribe_with_mlx_whisper(self, filepath: Path) -> dict:
         """
@@ -678,12 +693,14 @@ class TranscriptionHandler:
         )
         t_start = time.time()
 
+        model_path = self._resolve_mlx_model_path()
+
         try:
             def transcription_task(task: str = 'transcribe', language=None):
                 try:
                     return mlx_whisper.transcribe(
                         str(filepath),
-                        path_or_hf_repo=self.model,
+                        path_or_hf_repo=model_path,
                         task=task,
                         language=language,
                         word_timestamps=True,
@@ -695,7 +712,7 @@ class TranscriptionHandler:
                     )
                     return mlx_whisper.transcribe(
                         str(filepath),
-                        path_or_hf_repo=self.model,
+                        path_or_hf_repo=model_path,
                         task=task,
                         language=language,
                     )
