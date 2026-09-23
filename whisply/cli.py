@@ -1,5 +1,4 @@
 import os
-import warnings
 from pathlib import Path
 from typing import Annotated
 
@@ -10,8 +9,6 @@ from whisply import output_utils
 from whisply import post_correction as post
 from whisply.little_helper import DeviceChoice
 from whisply.output_utils import ExportFormats
-
-# warnings.filterwarnings("ignore", category="UserWarning")
 
 cli_app = typer.Typer(no_args_is_help=True)
 
