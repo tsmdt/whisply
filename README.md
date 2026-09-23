@@ -337,4 +337,4 @@ You can provide a `.json` config file by using the `--config` option which makes
 
 ### Citation
 
-> Schmidt, T. (2026). whisply: Cross-Platform Python App for Batch Transcription, Translation, Speaker Annotation and Subtitle Generation of Video and Audio Content (v0.15). Zenodo. [https://doi.org/10.5281/zenodo.19437856](https://doi.org/10.5281/zenodo.19437856)
+> Schmidt, T. (2026). whisply: Cross-Platform Python App for Batch Transcription, Translation, Speaker Annotation and Subtitle Generation of Video and Audio Content (v0.15.0). Zenodo. [https://doi.org/10.5281/zenodo.19437856](https://doi.org/10.5281/zenodo.19437856)
