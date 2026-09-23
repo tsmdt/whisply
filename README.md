@@ -16,7 +16,7 @@
   - [Install `ffmpeg`](#install-ffmpeg)
   - [Installation with `pip`](#installation-with-pip)
   - [Installation from `source`](#installation-from-source)
-  - [Nvidia GPU fix for Linux users (November 2025)](#nvidia-gpu-fix-november-2025)
+  - [Nvidia GPU fix for Linux users](#nvidia-gpu-fix)
 - [Usage](#usage)
   - [CLI](#cli)
   - [App](#app)
@@ -67,7 +67,7 @@
 
 ```shell
 # --- macOS ---
-brew install ffmpeg
+brew install ffmpeg@7
 
 # --- Linux ---
 sudo apt-get update
@@ -156,7 +156,7 @@ For more information you can visit the [FFmpeg website](https://ffmpeg.org/downl
   pip install -e ".[mlx,app]"
   ```
 
-### Nvidia GPU fix (November 2025)
+### Nvidia GPU fix
 <details>
 <summary><i>Could not load library libcudnn_ops.so.9</i> (<b>click to expand</b>)</summary>
 <br>If you use <b>whisply</b> with a Nvidia GPU and encounter this error:<br><br>
@@ -261,9 +261,9 @@ Open the local URL in your browser after starting the app (**Note**: The URL mig
 
 #### Requirements
 
-In order to annotate speakers using `--annotate` you need to provide a valid [HuggingFace](https://huggingface.co) access token using the `--hf_token` option. Additionally, you must accept the terms and conditions for both version 3.0 and version 3.1 of the `pyannote` segmentation model.
+In order to annotate speakers using `--annotate` you need to provide a valid [HuggingFace](https://huggingface.co) access token using the `--hf_token` option. Additionally, you must accept the terms and conditions for the `pyannote/speaker-diarization-community-1` pipeline.
 
-For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-3.1#requirements) and make sure that you complete steps *"2. Accept pyannote/segmentation-3.0 user conditions"*, *"3. Accept pyannote/speaker-diarization-3.1 user conditions"* and *"4. Create access token at hf.co/settings/tokens"*.
+For detailed instructions, refer to the *Requirements* section on the [pyannote model page on HuggingFace](https://huggingface.co/pyannote/speaker-diarization-community-1#requirements) and make sure that you accept the *"pyannote/speaker-diarization-community-1 user conditions"* and *create an access token at hf.co/settings/tokens*.
 
 #### How speaker annotation works
 
@@ -337,4 +337,4 @@ You can provide a `.json` config file by using the `--config` option which makes
 
 ### Citation
 
-> Schmidt, T. (2026). whisply: Cross-Platform Python App for Batch Transcription, Translation, Speaker Annotation and Subtitle Generation of Video and Audio Content (v0.14.0). Zenodo. https://doi.org/10.5281/zenodo.19437856
+> Schmidt, T. (2026). whisply: Cross-Platform Python App for Batch Transcription, Translation, Speaker Annotation and Subtitle Generation of Video and Audio Content (v0.15). Zenodo. [https://doi.org/10.5281/zenodo.19437856](https://doi.org/10.5281/zenodo.19437856)

@@ -11,7 +11,7 @@ from whisply import little_helper
 from whisply.post_correction import Corrections
 
 # Set logging configuration
-logger = logging.getLogger('little_helper')
+logger = logging.getLogger('output_utils')
 logger.setLevel(logging.INFO)
 
 

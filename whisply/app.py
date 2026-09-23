@@ -1,15 +1,15 @@
 import base64
-import gradio as gr
 import os
 import shutil
-import zipfile
 import tempfile
-
-from datetime import datetime
+import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
+
+import gradio as gr
+
 from whisply import output_utils
 from whisply.app_helpers import CSS, LANGUAGES
-
 
 LOGO_PATH = Path(__file__).parent / "assets" / "whisply.png"
 
@@ -46,9 +46,9 @@ def create_gradio_interface():
         hf_token,
         sub_length
     ):
-        from whisply.transcription import TranscriptionHandler
         from whisply import little_helper as help
         from whisply import models
+        from whisply.transcription import TranscriptionHandler
 
         if not options:
             options = []
@@ -191,7 +191,7 @@ def create_gradio_interface():
                 progress(current_step / total_steps)
 
                 # Detect file language
-                if not handler.file_language:
+                if not handler.file_language and handler.device != 'mlx':
                     handler.detect_language(filepath, audio_array)
 
                 # Update progress
@@ -221,7 +221,7 @@ def create_gradio_interface():
                             translation=handler.translate
                         )
                         print(
-                            f'→ Using {handler.device.upper()} and whisper🆇  '
+                            f'→ Using {handler.device.upper()} and whisperX '
                             f'with model "{handler.model}"'
                         )
                         result_data = handler.transcribe_with_whisperx(
@@ -247,7 +247,7 @@ def create_gradio_interface():
 
                 result = {
                     'id': f'file_00{idx + 1}',
-                    'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'created': datetime.now(tz=UTC).strftime('%Y-%m-%d %H:%M:%S'),
                     'input_filepath': str(Path(filepath).absolute()),
                     'output_filepath': str(Path(output_filepath).absolute()),
                     'written_files': None,
@@ -291,7 +291,7 @@ def create_gradio_interface():
                 output_files = processed_file.get('written_files', [])
                 output_files_set.update(output_files)
 
-            output_files = sorted(list(output_files_set))
+            output_files = sorted(output_files_set)
 
             yield output_files, output_files, gr.update(visible=True)
         else:
@@ -358,7 +358,8 @@ def create_gradio_interface():
                             'distil-large-v2',
                             'large-v3',
                             'distil-large-v3',
-                            'large-v3-turbo'],
+                            'large-v3-turbo'
+                        ],
                         label="Model",
                         value='large-v3-turbo',
                         info='Whisper model for the transcription.'

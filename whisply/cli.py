@@ -1,132 +1,164 @@
 import os
-import typer
-import warnings
 from pathlib import Path
-from typing import Optional, List
+from typing import Annotated
+
+import typer
 from rich import print
+
 from whisply import output_utils
 from whisply import post_correction as post
-from whisply.output_utils import ExportFormats
 from whisply.little_helper import DeviceChoice
-
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
+from whisply.output_utils import ExportFormats
 
 cli_app = typer.Typer(no_args_is_help=True)
 
 
 @cli_app.command("run", no_args_is_help=True)
 def run_cmd(
-    files: Optional[List[str]] = typer.Option(
-        None,
-        "--files",
-        "-f",
-        help="Path to file, folder, URL or .list to process.",
-    ),
-    output_dir: Path = typer.Option(
-        Path("./transcriptions"),
-        "--output_dir",
-        "-o",
-        file_okay=False,
-        dir_okay=True,
-        writable=True,
-        readable=True,
-        resolve_path=True,
-        help="Output folder",
-    ),
-    device: DeviceChoice = typer.Option(
-        DeviceChoice.AUTO,
-        "--device",
-        "-d",
-        help=("CPU, GPU (NVIDIA), MLX (Mac M1-M5)"),
-    ),
-    model: str = typer.Option(
-        "large-v3-turbo",
-        "--model",
-        "-m",
-        help='Whisper model (run "whisply list" to see options)',
-    ),
-    lang: Optional[str] = typer.Option(
-        None,
-        "--language",
-        "-l",
-        help='Language of your file(s) ("en", "de") (Default: auto-detect)',
-    ),
-    annotate: bool = typer.Option(
-        False,
-        "--annotate",
-        "-a",
-        help="Enable speaker annotation (Default: False)",
-    ),
-    num_speakers: Optional[int] = typer.Option(
-        None,
-        "--num_speakers",
-        "-num",
-        help="Number of speakers to annotate (Default: auto-detect)",
-    ),
-    hf_token: Optional[str] = typer.Option(
-        None,
-        "--hf_token",
-        "-hf",
-        help="HuggingFace Access token required for speaker annotation",
-    ),
-    subtitle: bool = typer.Option(
-        False,
-        "--subtitle",
-        "-s",
-        help="Create subtitles (Default: False)",
-    ),
-    sub_length: int = typer.Option(
-        5,
-        "--subtitle_length",
-        "-sub_length",
-        help="Subtitle segment length in words"
-    ),
-    translate: bool = typer.Option(
-        False,
-        "--translate",
-        "-t",
-        help="Translate transcription to English (Default: False)",
-    ),
-    export_format: ExportFormats = typer.Option(
-        ExportFormats.ALL,
-        "--export",
-        "-e",
-        help="Choose the export format"
-    ),
-    del_originals: bool = typer.Option(
-        False,
-        "--del_originals",
-        "-del",
-        help="Delete input files after file conversion. (Default: False)",
-    ),
-    download_lang: Optional[str] = typer.Option(
-        None,
-        "--download_language",
-        "-dl",
-        help=(
-            'Specify a language code ("en", "de" ...) to transcribe a '
-            'specific audio track of a URL. (Default: auto-detect)'
+    files: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--files",
+            "-f",
+            help="Path to file, folder, URL or .list to process.",
         ),
-    ),
-    config: Optional[Path] = typer.Option(
-        None,
-        "--config",
-        "-c",
-        help="Path to configuration file",
-    ),
-    post_correction: Optional[Path] = typer.Option(
-        None,
-        "--post_correction",
-        "-post",
-        help="Path to YAML file for post-correction",
-    ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Print text chunks during transcription (Default: False)",
-    )
+    ] = None,
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output_dir",
+            "-o",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            readable=True,
+            resolve_path=True,
+            help="Output folder",
+        ),
+    ] = Path("./transcriptions"),
+    device: Annotated[
+        DeviceChoice,
+        typer.Option(
+            "--device",
+            "-d",
+            help="CPU, GPU (NVIDIA), MLX (Mac M1-M5)",
+        ),
+    ] = DeviceChoice.AUTO,
+    model: Annotated[
+        str,
+        typer.Option(
+            "--model",
+            "-m",
+            help='Whisper model (run "whisply list" to see options)',
+        ),
+    ] = "large-v3-turbo",
+    lang: Annotated[
+        str | None,
+        typer.Option(
+            "--language",
+            "-l",
+            help='Language of your file(s) ("en", "de") (Default: auto-detect)',
+        ),
+    ] = None,
+    annotate: Annotated[
+        bool,
+        typer.Option(
+            "--annotate",
+            "-a",
+            help="Enable speaker annotation (Default: False)",
+        ),
+    ] = False,
+    num_speakers: Annotated[
+        int | None,
+        typer.Option(
+            "--num_speakers",
+            "-num",
+            help="Number of speakers to annotate (Default: auto-detect)",
+        ),
+    ] = None,
+    hf_token: Annotated[
+        str | None,
+        typer.Option(
+            "--hf_token",
+            "-hf",
+            help="HuggingFace Access token required for speaker annotation",
+        ),
+    ] = None,
+    subtitle: Annotated[
+        bool,
+        typer.Option(
+            "--subtitle",
+            "-s",
+            help="Create subtitles (Default: False)",
+        ),
+    ] = False,
+    sub_length: Annotated[
+        int,
+        typer.Option(
+            "--subtitle_length",
+            "-sub_length",
+            help="Subtitle segment length in words",
+        ),
+    ] = 5,
+    translate: Annotated[
+        bool,
+        typer.Option(
+            "--translate",
+            "-t",
+            help="Translate transcription to English (Default: False)",
+        ),
+    ] = False,
+    export_format: Annotated[
+        ExportFormats,
+        typer.Option(
+            "--export",
+            "-e",
+            help="Choose the export format",
+        ),
+    ] = ExportFormats.ALL,
+    del_originals: Annotated[
+        bool,
+        typer.Option(
+            "--del_originals",
+            "-del",
+            help="Delete input files after file conversion. (Default: False)",
+        ),
+    ] = False,
+    download_lang: Annotated[
+        str | None,
+        typer.Option(
+            "--download_language",
+            "-dl",
+            help=(
+                'Specify a language code ("en", "de" ...) to transcribe a '
+                'specific audio track of a URL. (Default: auto-detect)'
+            ),
+        ),
+    ] = None,
+    config: Annotated[
+        Path | None,
+        typer.Option(
+            "--config",
+            "-c",
+            help="Path to configuration file",
+        ),
+    ] = None,
+    post_correction: Annotated[
+        Path | None,
+        typer.Option(
+            "--post_correction",
+            "-post",
+            help="Path to YAML file for post-correction",
+        ),
+    ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Print text chunks during transcription (Default: False)",
+        ),
+    ] = False,
 ):
     """
     Transcribe files with whisply

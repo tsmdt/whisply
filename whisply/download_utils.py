@@ -1,11 +1,11 @@
-import re
 import logging
-import yt_dlp as url_downloader
+import re
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime
+
+import yt_dlp as url_downloader
 
 from whisply import little_helper
-
 
 # Set logging configuration
 logger = logging.getLogger('download_utils')
@@ -69,7 +69,7 @@ def download_url(
     little_helper.ensure_dir(downloads_dir)
 
     temp_filename = (
-        f"temp_{datetime.now().strftime('%Y%m%d_%H_%M_%S')}_{language}"
+        f"temp_{datetime.now(tz=UTC).strftime('%Y%m%d_%H_%M_%S')}_{language}"
     )
 
     native_ext = _probe_audio_format(url, language)

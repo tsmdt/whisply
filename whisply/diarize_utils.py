@@ -1,8 +1,7 @@
+import numpy as np
 import requests
 import torch
-import numpy as np
 from torchaudio import functional as F
-from pyannote.audio import Pipeline
 from transformers.pipelines.audio_utils import ffmpeg_read
 
 # Code lifted from
@@ -12,7 +11,7 @@ from transformers.pipelines.audio_utils import ffmpeg_read
 
 def preprocess_inputs(inputs):
     if isinstance(inputs, str):
-        if inputs.startswith("http://") or inputs.startswith("https://"):
+        if inputs.startswith(("http://", "https://")):
             # We need to actually check for a real protocol, otherwise it's
             # impossible to use a local file like http_huggingface_co.png
             inputs = requests.get(inputs).content
@@ -52,7 +51,7 @@ def preprocess_inputs(inputs):
             ).numpy()
 
     if not isinstance(inputs, np.ndarray):
-        raise ValueError(
+        raise TypeError(
             f"We expect a numpy ndarray as input, got `{type(inputs)}`"
         )
     if len(inputs.shape) != 1:
@@ -68,6 +67,26 @@ def preprocess_inputs(inputs):
     return inputs, diarizer_inputs
 
 
+def _unwrap_diarization(diarization):
+    """
+    Return the pyannote ``Annotation`` from a pipeline output.
+
+    pyannote.audio 4.x returns a ``DiarizeOutput`` dataclass wrapping the
+    (exclusive) speaker diarization and speaker embeddings. Older versions
+    return the ``Annotation`` directly. For downstream transcription the
+    exclusive diarization (without overlapping speech turns) is preferred.
+    """
+    exclusive = getattr(diarization, "exclusive_speaker_diarization", None)
+    if exclusive is not None:
+        return exclusive
+
+    annotation = getattr(diarization, "speaker_diarization", None)
+    if annotation is not None:
+        return annotation
+
+    return diarization
+
+
 def diarize_audio(
     diarizer_inputs,
     diarization_pipeline,
@@ -81,6 +100,9 @@ def diarize_audio(
         min_speakers=min_speakers,
         max_speakers=max_speakers,
     )
+
+    # pyannote.audio safeguard: 4.x wraps the annotation in a DiarizeOutput object
+    diarization = _unwrap_diarization(diarization)
 
     segments = []
     for segment, track, label in diarization.itertracks(yield_label=True):
@@ -186,12 +208,32 @@ def post_process_segments_and_transcripts(
     return segmented_preds
 
 
+def _resolve_torch_device(device: str | None) -> torch.device:
+    """
+    Map a whisply device string to a torch device for pyannote.
+    """
+    if device in ('mlx', 'mps'):
+        return torch.device("mps")
+    if device in ('cuda', 'cuda:0', 'gpu'):
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
 def diarize(outputs, **kwargs):
+    from pyannote.audio import Pipeline
+
     diarization_pipeline = Pipeline.from_pretrained(
-        checkpoint_path=kwargs['diarization_model'],
-        use_auth_token=kwargs['hf_token']
+        checkpoint=kwargs['diarization_model'],
+        token=kwargs['hf_token']
     )
-    diarization_pipeline.to(torch.device("mps"))
+    if diarization_pipeline is None:
+        raise RuntimeError(
+            f"Could not load diarization pipeline "
+            f"'{kwargs['diarization_model']}'. Please make sure the model "
+            f"exists and your HuggingFace token has access to it."
+        )
+
+    diarization_pipeline.to(_resolve_torch_device(kwargs.get('device')))
 
     _, diarizer_inputs = preprocess_inputs(
         inputs=kwargs['file_name']
