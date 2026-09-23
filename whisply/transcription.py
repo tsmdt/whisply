@@ -1,24 +1,36 @@
 import logging
 import time
-from pathlib import Path
-from datetime import datetime
+import warnings
+from datetime import UTC, datetime
 from functools import partial
+from pathlib import Path
+
 from rich import print
 
-from whisply import output_utils, models
 from whisply import little_helper as help
+from whisply import models, output_utils
 from whisply.little_helper import FilePathProcessor
 from whisply.post_correction import Corrections
 
-# Set logging configuration
+# Set logging
 log_dir = help.ensure_dir(Path('./logs'))
-log_filename = f"log_whisply_{datetime.now().strftime('%Y-%m-%d')}.log"
+log_filename = f"log_whisply_{datetime.now(tz=UTC).strftime('%Y-%m-%d')}.log"
 log_file = f"{log_dir}/{log_filename}"
 
 logging.basicConfig(
     filename=log_file,
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(funcName)s]: %(message)s",
+)
+logger = logging.getLogger('transcription')
+
+# Ignore non-critical warnings
+logging.getLogger('lightning.pytorch.utilities.migration').setLevel(logging.ERROR)
+logging.getLogger('whisperx.vads.pyannote').setLevel(logging.WARNING)
+warnings.filterwarnings(
+    'ignore',
+    message=r'std\(\): degrees of freedom is <= 0',
+    category=UserWarning,
 )
 
 
@@ -28,81 +40,11 @@ class TranscriptionHandler:
     Whisper-based models.
 
     This class leverages different implementations of OpenAI's Whisper models
-    (whisperX, insanely-fast-whisper, faster-whisper) to transcribe audio and
-    video files. It supports features like language detection, speaker
-    diarization, translation, subtitle generation, and exporting transcriptions
-    in multiple formats. It is capable of processing single files, directories,
-    URLs, and lists of files, providing flexibility for diverse transcription
-    needs.
-
-    Args:
-        base_dir (str, optional): Directory to store transcription outputs.
-            Defaults to './transcriptions'.
-        model (str, optional): Whisper model variant to use (e.g., 'large-v2').
-            Defaults to 'large-v3-turbo'.
-        device (str, optional): Compute device ('cpu', 'cuda', etc.).
-            Defaults to 'cpu'.
-        file_language (str, optional): Language of the input audio.
-            If not provided, language detection is performed.
-        annotate (bool, optional): Enable speaker diarization.
-            Defaults to False.
-        hf_token (str, optional): Hugging Face token for accessing restricted
-            models or features.
-        subtitle (bool, optional): Generate subtitles with word-level
-            timestamps. Defaults to False.
-        sub_length (int, optional): Maximum number of words per subtitle chunk.
-            Required if subtitle is True.
-        translate (bool, optional): Translate transcription to English if the
-            original language is different. Defaults to False.
-        verbose (bool, optional): Enable detailed logging and output.
-            Defaults to False.
-        export_formats (str or list, optional): Formats to export
-            transcriptions (e.g., 'json', 'srt'). Defaults to 'all'.
-
-    Attributes:
-        base_dir (Path): Directory for storing transcriptions.
-        device (str): Compute device in use.
-        file_language (str or None): Detected or specified language of the
-            audio.
-        annotate (bool): Indicates if speaker diarization is enabled.
-        translate (bool): Indicates if translation is enabled.
-        subtitle (bool): Indicates if subtitle generation is enabled.
-        verbose (bool): Indicates if verbose mode is active.
-        export_formats (str or list): Selected formats for exporting
-            transcriptions.
-        processed_files (list): List of processed file information and results.
-
-    Methods:
-        get_filepaths(filepath: str):
-            Retrieves and validates file paths from various input types.
-
-        detect_language(file: Path, audio_array) -> str:
-            Detects the language of the given audio file.
-
-        process_files(files: list):
-            Processes a list of audio files for transcription and diarization.
-
-        transcribe_with_whisperx(filepath: Path) -> dict:
-            Transcribes an audio file using the whisperX implementation.
-
-        transcribe_with_faster_whisper(filepath: Path, num_workers: int = 1)
-            -> dict:
-            Transcribes an audio file using the faster-whisper implementation.
-
-        adjust_word_chunk_length(result: dict) -> dict:
-            Splits transcription text into chunks based on a maximum word
-            count.
-
-        to_transcription_dict(insanely_annotation: list[dict]) -> dict:
-            Converts speaker-annotated results into a standardized dictionary.
-
-        to_whisperx(transcription_result: dict) -> dict:
-            Normalizes transcription results to the whisperX format.
-
-        create_text_with_speakers(transcription_dict: dict,
-            delimiter: str = '.') -> dict:
-            Inserts speaker labels into the transcription text upon speaker
-            changes.
+    (whisperX, faster-whisper, mlx-whisper) to transcribe audio and video files.
+    It supports features like language detection, speaker diarization, translation,
+    subtitle generation, and exporting transcriptions in multiple formats. It is
+    capable of processing single files, directories, URLs, and lists of files,
+    providing flexibility for diverse transcription needs.
     """
     def __init__(
         self,
@@ -381,9 +323,10 @@ class TranscriptionHandler:
         This implementation is used when a specific subtitle length (e.g.
         5 words per individual subtitle) is needed.
         """
+        import gc
+
         import torch
         import whisperx
-        import gc
 
         def empty_cuda_cache(model):
             gc.collect()
@@ -522,12 +465,13 @@ class TranscriptionHandler:
             device = 'cuda' if self.device == 'cuda:0' else 'cpu'
 
             diarize_model = whisperx.diarize.DiarizationPipeline(
-                use_auth_token=self.hf_token,
+                model_name='pyannote/speaker-diarization-community-1',
+                token=self.hf_token,
                 device=device
                 )
             diarize_segments = diarize_model(
                 str(filepath),
-                max_speakers=self.num_speakers
+                num_speakers=self.num_speakers
                 )
             result = whisperx.assign_word_speakers(
                 diarize_segments,
@@ -541,8 +485,8 @@ class TranscriptionHandler:
             return result
 
         # Start and time transcription
-        logging.info(
-            f"👨‍💻 Transcription started with whisper🆇 for {filepath.name}"
+        logger.info(
+            f"👨‍💻 Transcription started with whisperX for {filepath.name}"
         )
         t_start = time.time()
 
@@ -636,7 +580,7 @@ class TranscriptionHandler:
         if self.annotate:
             result = self.create_text_with_speakers(result)
 
-        logging.info(
+        logger.info(
             f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec."
         )
 
@@ -673,21 +617,23 @@ class TranscriptionHandler:
                 "mlx-whisper is required to run transcriptions on MLX. "
                 "Install it with `pip install mlx-whisper` (macOS only)."
             ) from exc
-        from whisply import diarize_utils
 
         def mlx_annotation(transcription_result: dict) -> dict:
+            from whisply import diarize_utils
+
             annotation_result = diarize_utils.diarize(
                 transcription_result,
-                diarization_model='pyannote/speaker-diarization-3.1',
+                diarization_model='pyannote/speaker-diarization-community-1',
                 hf_token=self.hf_token,
                 file_name=str(filepath),
+                device=self.device,
                 num_speakers=self.num_speakers,
                 min_speakers=None,
                 max_speakers=None,
             )
             return self.to_transcription_dict(annotation_result)
 
-        logging.info(
+        logger.info(
             f"👨‍💻 Transcription started with 🍎 mlx-whisper "
             f"for {filepath.name}"
         )
@@ -706,7 +652,7 @@ class TranscriptionHandler:
                         word_timestamps=True,
                     )
                 except TypeError:
-                    logging.info(
+                    logger.info(
                         "mlx-whisper does not support `word_timestamps` in "
                         "this version. Falling back to default call."
                     )
@@ -728,6 +674,21 @@ class TranscriptionHandler:
                     language=self.file_language
                 )
             )
+
+            if not self.file_language:
+                detected_language = transcription_result.get('language')
+                if not detected_language:
+                    raise RuntimeError(
+                        "mlx-whisper did not return a detected language."
+                    )
+                self.file_language = detected_language
+                msg = (
+                    f"Detected language '{detected_language}' "
+                    f"with 🍎 MLX-Whisper"
+                )
+                print(f'[blue1]→ {msg}')
+                logger.info(msg)
+
             transcription_result = self.to_mlx_chunks(transcription_result)
 
             if self.annotate:
@@ -809,10 +770,10 @@ class TranscriptionHandler:
 
             return {'transcription': result}
         except Exception:
-            logging.exception("Transcription failed with mlx-whisper")
+            logger.exception("Transcription failed with mlx-whisper")
             raise
         finally:
-            logging.info(
+            logger.info(
                 f"👨‍💻 Transcription ended in {time.time() - t_start:.2f} sec."
             )
 
@@ -842,10 +803,10 @@ class TranscriptionHandler:
                 The transcription result includes the recognized text and
                 segmented chunks with timestamps if available.
         """
-        from faster_whisper import WhisperModel, BatchedInferencePipeline
+        from faster_whisper import BatchedInferencePipeline, WhisperModel
 
         # Start and time transcription
-        logging.info(
+        logger.info(
             f"👨‍💻 Transcription started with 🏃‍♀️‍➡️ faster-whisper "
             f"for {filepath.name}"
         )
@@ -967,7 +928,7 @@ class TranscriptionHandler:
                 }
 
         # Stop timing transcription
-        logging.info(
+        logger.info(
             f"👨‍💻 Transcription completed in {time.time() - t_start:.2f} sec."
         )
 
@@ -979,7 +940,7 @@ class TranscriptionHandler:
         """
         from faster_whisper import WhisperModel
 
-        logging.info(f"Detecting language of file: {filepath.name}")
+        logger.info(f"Detecting language of file: {filepath.name}")
 
         def run_language_detection():
             device_for_detection = (
@@ -1013,7 +974,7 @@ class TranscriptionHandler:
 
         msg = f"Detected language '{lang}' with probability {score:.2f}"
         print(f'[blue1]→ {msg}')
-        logging.info(msg)
+        logger.info(msg)
 
     def process_files(self, files: list[str | Path]) -> None:
         """
@@ -1032,7 +993,7 @@ class TranscriptionHandler:
         files (list of str): A list of file paths or file-like objects
         representing the audio files to be processed.
         """
-        logging.info(f"Provided parameters for processing: {self.metadata}")
+        logger.info(f"Provided parameters for processing: {self.metadata}")
 
         # Check if dependencies for chosen device are installed
         deps_ok, deps_message = help.check_dependencies_for_device(
@@ -1050,7 +1011,7 @@ class TranscriptionHandler:
         self.filepaths = filepath_handler.filepaths
 
         # Process filepaths
-        logging.info(f"Processing files: {self.filepaths}")
+        logger.info(f"Processing files: {self.filepaths}")
 
         self.processed_files = []
         for idx, filepath in enumerate(self.filepaths):
@@ -1066,10 +1027,10 @@ class TranscriptionHandler:
                 )
 
             # Detect file language
-            if not self.file_language:
+            if not self.file_language and self.device != 'mlx':
                 self.detect_language(filepath, audio_array)
 
-            logging.info(f"Transcribing file: {filepath.name}")
+            logger.info(f"Transcribing file: {filepath.name}")
 
             ### Transcription and speaker annotation
             # MLX
@@ -1097,7 +1058,7 @@ class TranscriptionHandler:
                     )
                     print(
                         f'[blue1]→ Using {self.device.upper()} and '
-                        f'whisper🆇 with model "{self.model}"'
+                        f'whisperX with model "{self.model}"'
                     )
                     result_data = self.transcribe_with_whisperx(filepath)
                 else:
@@ -1119,7 +1080,7 @@ class TranscriptionHandler:
                 t.get('text', '').strip() for t in transcriptions.values()
             )
             if not has_speech:
-                logging.info(
+                logger.info(
                     f"No speech detected in {filepath.name}. Skipping."
                 )
                 print(
@@ -1132,7 +1093,7 @@ class TranscriptionHandler:
 
             result = {
                 'id': f'file_00{idx + 1}',
-                'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'created': datetime.now(tz=UTC).strftime('%Y-%m-%d %H:%M:%S'),
                 'input_filepath': str(filepath.absolute()),
                 'output_filepath': str(Path(output_filepath).absolute()),
                 'written_files': None,

@@ -1,7 +1,7 @@
-import yaml
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Dict, List
+from pathlib import Path
+
+import yaml
 
 
 @dataclass
@@ -9,8 +9,8 @@ class Corrections:
     """
     A dataclass to encapsulate both simple and pattern-based corrections.
     """
-    simple: Dict[str, str] = field(default_factory=dict)
-    patterns: List[Dict[str, str]] = field(default_factory=list)
+    simple: dict[str, str] = field(default_factory=dict)
+    patterns: list[dict[str, str]] = field(default_factory=list)
 
 
 def load_correction_list(filepath: str | Path) -> Corrections:
@@ -26,7 +26,7 @@ def load_correction_list(filepath: str | Path) -> Corrections:
             data = yaml.safe_load(file)
 
         if not isinstance(data, dict):
-            raise ValueError(
+            raise TypeError(
                 "→ Correction file must contain a YAML dictionary."
             )
 

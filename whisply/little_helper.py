@@ -1,23 +1,19 @@
-import os
-import re
+import importlib.util
 import json
 import logging
-import ffmpeg
-import importlib.util
-import validators
-import numpy as np
+import os
 import platform
-
+import re
+from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Any, List, Optional
+from typing import Any
+
+import ffmpeg
+import numpy as np
+import validators
 from rich import print
-from rich.progress import (
-    Progress,
-    TimeElapsedColumn,
-    TextColumn,
-    SpinnerColumn
-)
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from whisply import download_utils
 
@@ -98,7 +94,7 @@ def get_device(device: DeviceChoice = DeviceChoice.AUTO) -> str:
     return device
 
 
-def _normalize_device_key(device: Optional[str]) -> str:
+def _normalize_device_key(device: str | None) -> str:
     if not device:
         return 'cpu'
     if device in ['cuda', 'cuda:0', 'gpu']:
@@ -118,8 +114,8 @@ def _missing_packages(packages: list[tuple[str, str]]) -> list[str]:
 
 def check_dependencies_for_device(
     device: str,
-    requested_device: Optional[DeviceChoice | str] = None
-) -> tuple[bool, Optional[str]]:
+    requested_device: DeviceChoice | str | None = None
+) -> tuple[bool, str | None]:
     """
     Verify that optional dependencies for the selected device are installed.
     Returns (ok, message).
@@ -151,7 +147,7 @@ def check_dependencies_for_device(
     return True, None
 
 
-def check_app_dependencies() -> tuple[bool, Optional[str]]:
+def check_app_dependencies() -> tuple[bool, str | None]:
     """
     Verify that optional dependencies for the Gradio app command are installed.
     Returns (ok, message).
@@ -181,12 +177,12 @@ class FilePathProcessor:
     """
     def __init__(
         self,
-        file_formats: List[str],
-        download_lang: str = None
+        file_formats: list[str],
+        download_lang: str | None = None
     ):
         self.file_formats = [fmt.lower() for fmt in file_formats]
         self.download_lang = download_lang
-        self.filepaths: List[Path] = []
+        self.filepaths: list[Path] = []
 
     def get_filepaths(self, filepath: str):
         """
@@ -200,7 +196,7 @@ class FilePathProcessor:
         try:
             # Handle URL
             if validators.url(filepath):
-                logging.info(f"Processing URL: {filepath}")
+                logger.info(f"Processing URL: {filepath}")
                 dl_kwargs = {}
                 if self.download_lang:
                     dl_kwargs['language'] = self.download_lang
@@ -212,7 +208,7 @@ class FilePathProcessor:
                 if downloaded_path:
                     self.filepaths.append(downloaded_path)
                 else:
-                    logging.error(f"Failed to download URL: {filepath}")
+                    logger.error(f"Failed to download URL: {filepath}")
                     print(f"→ Failed to download URL: {filepath}")
                 return
 
@@ -220,11 +216,11 @@ class FilePathProcessor:
             elif path.suffix.lower() == '.list':
                 if not path.is_file():
                     msg = f"The .list '{path}' does not exist or is not a file"
-                    logging.error(msg)
+                    logger.error(msg)
                     print(f'→ {msg}')
                     return
 
-                logging.info(f"Processing .list file: {path}")
+                logger.info(f"Processing .list file: {path}")
                 with path.open('r', encoding='utf-8') as file:
                     lpaths = set()
                     for line in file:
@@ -256,7 +252,7 @@ class FilePathProcessor:
                 self._process_path(path)
 
         except Exception as e:
-            logging.exception(
+            logger.exception(
                 "An unexpected error occurred while processing "
                 f"'{filepath}': {e}"
             )
@@ -271,7 +267,7 @@ class FilePathProcessor:
 
         # Final check to ensure there are files to process
         if not self.filepaths:
-            logging.warning(
+            logger.warning(
                 f'No valid files found for processing. '
                 f'Please check the provided path: "{filepath}".'
             )
@@ -280,7 +276,7 @@ class FilePathProcessor:
                 f'Please check the provided path: "{filepath}".'
             )
         else:
-            logging.info(
+            logger.info(
                 f"Total valid files to process: {len(self.filepaths)}"
             )
 
@@ -292,11 +288,11 @@ class FilePathProcessor:
 
         if path.is_file():
             if path.suffix.lower() in self.file_formats:
-                logging.info(f"Adding file: {path}")
+                logger.info(f"Adding file: {path}")
                 normalized_path = self._normalize_filepath(path)
                 self.filepaths.append(normalized_path)
             else:
-                logging.warning(
+                logger.warning(
                     f"File '{path}' has unsupported format and "
                     "will be skipped."
                 )
@@ -305,15 +301,15 @@ class FilePathProcessor:
                     "will be skipped."
                 )
         elif path.is_dir():
-            logging.info(f"Processing directory: {path}")
+            logger.info(f"Processing directory: {path}")
             for file_format in self.file_formats:
                 for file in path.rglob(f'*{file_format}'):
                     if file.is_file():
-                        logging.debug(f"Found file: {file}")
+                        logger.debug(f"Found file: {file}")
                         normalized_path = self._normalize_filepath(file)
                         self.filepaths.append(normalized_path)
         else:
-            logging.error(
+            logger.error(
                 f'Path "{path}" does not exist or is not accessible.'
             )
             print(f'→ Path "{path}" does not exist or is not accessible.')
@@ -365,7 +361,7 @@ class FilePathProcessor:
 
         removed_count = len(self.filepaths) - len(filtered_filepaths)
         if removed_count > 0:
-            logging.info(f"Removed {removed_count} files already converted.")
+            logger.info(f"Removed {removed_count} files already converted.")
         self.filepaths = filtered_filepaths
 
 
